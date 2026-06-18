@@ -1,0 +1,354 @@
+{% extends "projects/base.html" %}
+{% block title %}Profile — KanFlow{% endblock %}
+{% block page_title %}Profile{% endblock %}
+
+{% block extra_head %}
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- DM Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- Override dropdown menu styles for profile page -->
+    <style>
+        #profileMenu {
+            background-color: rgb(255, 255, 255) !important;
+            background: white !important;
+        }
+        
+        /* Force white background for dropdown */
+        .bg-surface-container-lowest {
+            background-color: white !important;
+            background: white !important;
+        }
+        
+        /* Ensure border is visible */
+        #profileMenu .border-white/60 {
+            border-color: rgba(255, 255, 255, 0.6) !important;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+        }
+        
+        /* Drag prevention for My Projects section */
+        .my-projects-container a {
+            user-drag: none;
+            -webkit-user-drag: none;
+        }
+        
+        /* Profile image protection */
+        .profile-avatar-img {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-drag: none;
+            -webkit-user-drag: none;
+        }
+    </style>
+    
+    <style>
+        .ghost-button {
+            @apply bg-transparent border border-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-white/10 hover:border-white/50 flex items-center gap-2 backdrop-blur-sm;
+        }
+        
+        /* Drag prevention and text selection disabling for Edit button only */
+        .ghost-button {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-drag: none;
+            -webkit-user-drag: none;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="page-bg min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+        <!-- Profile Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <!-- Header with Edit Button -->
+            <div class="relative bg-gradient-to-r from-brand-500 to-violet-600 p-8">
+                {% if is_owner %}
+                <div class="absolute top-4 right-4">
+                    <a href="/settings/" class="ghost-button flex items-center gap-2">
+                        <i data-lucide="edit" class="w-4 h-4"></i>
+                        Edit
+                    </a>
+                </div>
+                {% endif %}
+                
+                <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-8">
+                    <!-- Avatar (Larger) -->
+                    <div class="relative flex-shrink-0">
+                        <div class="cursor-pointer group" onclick="showAvatarPopup()">
+                            {% if target_user.profile.avatar %}
+                                <img src="{{ target_user.profile.avatar.url }}" alt="{{ target_user.username }}" 
+                                     class="profile-avatar-img w-20 h-20 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-white shadow-xl transition-transform group-hover:scale-105" draggable="false">
+                                <div class="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                    <i data-lucide="zoom-in" class="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                </div>
+                            {% else %}
+                                <div class="w-32 h-32 rounded-full bg-gradient-to-br from-white/20 to-white/10 flex items-center justify-center text-white text-4xl font-bold border-4 border-white shadow-xl transition-transform group-hover:scale-105">
+                                    {{ target_user.profile.display_name|default:target_user.username|slice:":1"|upper }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Info Side by Side with Avatar -->
+                    <div class="flex-1 text-white">
+                        <!-- Name and Email Section -->
+                        <div>
+                            <h1 class="text-xl sm:text-4xl font-bold mb-1 sm:mb-2 text-slate-800">{{ target_user.profile.display_name|default:target_user.username }}</h1>
+                            <div class="flex items-center gap-2 text-slate-600 text-sm mb-1">
+                                <i data-lucide="user" class="w-4 h-4 text-slate-500"></i>
+                                <span>{{ target_user.profile.name|default:"" }}{% if target_user.profile.name and target_user.profile.surname %} {% endif %}{{ target_user.profile.surname|default:"" }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-600 text-sm">
+                                <i data-lucide="mail" class="w-4 h-4 text-slate-500"></i>
+                                <span>{{ target_user.email_masked|default:"No email" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Additional Details Section -->
+            <div class="p-6 bg-gradient-to-b from-slate-50 to-white">
+                <!-- Gender Info Card -->
+                <div class="bg-white rounded-xl border border-slate-100 p-4 mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                            <i data-lucide="{{ target_user.profile.get_gender_icon }}" class="w-5 h-5 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase tracking-wider">Gender</p>
+                            <p class="font-semibold text-slate-800">
+                                {% if target_user.profile.gender == 'male' %}Male
+                                {% elif target_user.profile.gender == 'female' %}Female
+                                {% elif target_user.profile.gender == 'lgbtq_plus' %}LGBTQ+
+                                {% elif target_user.profile.gender == 'prefer_not_to_say' %}Prefer not to say
+                                {% else %}Not specified
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Full Bio -->
+                <div class="bg-white rounded-xl border border-slate-100 p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="quote" class="w-5 h-5 text-slate-400 mt-0.5"></i>
+                        <div class="flex-1">
+                            {% if target_user.profile.bio %}
+                                <p class="text-slate-600 leading-relaxed">{{ target_user.profile.bio }}</p>
+                            {% else %}
+                                <p class="text-slate-400 italic">No bio yet</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Section -->
+        <div class="grid grid-cols-3 gap-2 sm:gap-4 mt-4 sm:mt-6">
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-3 sm:p-6 hover:shadow-md hover:border-brand-200 transition-all duration-200 cursor-pointer group">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-3xl font-bold text-slate-800 group-hover:text-brand-600 transition-colors">{{ tasks_created }}</p>
+                        <p class="text-sm text-slate-500 mt-1">Tasks Created</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
+                        <i data-lucide="plus-circle" class="w-6 h-6 text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-3 sm:p-6 hover:shadow-md hover:border-brand-200 transition-all duration-200 cursor-pointer group">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-3xl font-bold text-slate-800 group-hover:text-brand-600 transition-colors">{{ tasks_completed }}</p>
+                        <p class="text-sm text-slate-500 mt-1">Tasks Completed</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors">
+                        <i data-lucide="check-circle" class="w-6 h-6 text-emerald-600"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-3 sm:p-6 hover:shadow-md hover:border-brand-200 transition-all duration-200 cursor-pointer group">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-3xl font-bold text-slate-800 group-hover:text-brand-600 transition-colors">{{ projects_joined }}</p>
+                        <p class="text-sm text-slate-500 mt-1">Projects Joined</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors">
+                        <i data-lucide="folder" class="w-6 h-6 text-violet-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity & Projects -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6 mt-3 sm:mt-6">
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+                <div class="p-6 border-b border-slate-100">
+                    <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="activity" class="w-5 h-5 text-brand-600"></i>
+                        Recent Activity
+                    </h2>
+                </div>
+                <div class="p-6">
+                    {% if recent_activities %}
+                    <div class="space-y-3">
+                        {% for activity in recent_activities %}
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="{% if activity.action == 'create_task' %}plus{% elif activity.action == 'update_task' %}edit{% elif activity.action == 'delete_task' %}trash-2{% elif activity.action == 'change_status' %}arrow-right-left{% elif activity.action == 'assign_user' %}user-plus{% else %}activity{% endif %}" 
+                                   class="w-4 h-4 text-brand-600"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm text-slate-600">{{ activity.get_action_display }} in <span class="font-medium">{{ activity.project.name }}</span></p>
+                                <p class="text-xs text-slate-400">{{ activity.timestamp|timesince }} ago</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8">
+                        <i data-lucide="file-text" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+                        <p class="text-sm text-slate-400">No recent activity</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- My Projects -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+                <div class="p-6 border-b border-slate-100">
+                    <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="folder" class="w-5 h-5 text-brand-600"></i>
+                        {% if is_owner %}My{% else %}{{ target_user.profile.display_name|default:target_user.username }}'s{% endif %} Projects
+                    </h2>
+                </div>
+                <div class="p-6 my-projects-container">
+                    {% if my_projects %}
+                    <div class="flex flex-wrap gap-2">
+                        {% for project in my_projects %}
+                        <a href="/project/{{ project.id }}/" 
+                           class="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-brand-50 hover:to-brand-100 rounded-lg text-sm text-slate-700 hover:text-brand-700 transition-all duration-200 border border-slate-200 hover:border-brand-300 shadow-sm hover:shadow-md group">
+                            <div class="w-5 h-5 rounded bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <span class="text-white text-[10px] font-bold">{{ project.name|slice:":1"|upper }}</span>
+                            </div>
+                            <span class="font-medium">{{ project.name }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8">
+                        <i data-lucide="folder" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+                        <p class="text-sm text-slate-400">No projects yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Avatar Popup Modal -->
+<div id="avatarPopup" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300" onclick="hideAvatarPopup(event)">
+    <div class="relative max-w-2xl max-h-[90vh] transform scale-95 transition-transform duration-300" id="popupContent">
+        <!-- Close Button -->
+        <button onclick="hideAvatarPopup()" class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+        
+        <!-- Avatar Image -->
+        <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
+            {% if target_user.profile.avatar %}
+                <img src="{{ target_user.profile.avatar.url }}" alt="{{ target_user.username }}" 
+                     class="profile-avatar-img w-full h-auto max-h-[80vh] object-contain" draggable="false">
+            {% else %}
+                <div class="w-64 h-64 mx-auto bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center text-white text-6xl font-bold">
+                    {{ target_user.profile.display_name|default:target_user.username|slice:":1"|upper }}
+                </div>
+            {% endif %}
+            
+            <!-- User Info -->
+            <div class="p-6 bg-white">
+                <h3 class="text-xl font-semibold text-slate-800 mb-2">{{ target_user.profile.display_name|default:target_user.username }}</h3>
+                {% if target_user.profile.bio %}
+                <p class="text-slate-600 text-sm">{{ target_user.profile.bio|truncatechars:100 }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Avatar Popup -->
+<script>
+function showAvatarPopup() {
+    const popup = document.getElementById('avatarPopup');
+    const content = document.getElementById('popupContent');
+    
+    // Show popup
+    popup.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    // Trigger animations
+    requestAnimationFrame(() => {
+        popup.classList.remove('opacity-0');
+        popup.classList.add('opacity-100');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    });
+}
+
+function hideAvatarPopup(event) {
+    // Close if clicked outside the image container or on close button
+    if (!event || event.target === event.currentTarget || event.target.closest('button')) {
+        const popup = document.getElementById('avatarPopup');
+        const content = document.getElementById('popupContent');
+        
+        // Trigger close animations
+        popup.classList.remove('opacity-100');
+        popup.classList.add('opacity-0');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+        
+        // Hide after animation completes
+        setTimeout(() => {
+            popup.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }, 300);
+    }
+}
+
+// Prevent right-click context menu on profile images
+document.addEventListener('DOMContentLoaded', function() {
+    const profileImages = document.querySelectorAll('.profile-avatar-img');
+    profileImages.forEach(function(img) {
+        img.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+    });
+});
+
+// Close on ESC key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        hideAvatarPopup();
+    }
+});
+</script>
+
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

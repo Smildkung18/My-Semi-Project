@@ -1,0 +1,505 @@
+{% extends 'projects/base.html' %}
+{% block title %}Reports & Export{% endblock %}
+
+{% block content %}
+<div class="analytics-wrap">
+
+  <!-- ── Nav tabs ── -->
+  <div class="an-tabs">
+    <a href="/analytics/" class="an-tab">
+      <i data-lucide="user"></i> Personal
+    </a>
+    <a href="/analytics/team/" class="an-tab">
+      <i data-lucide="users"></i> Team
+    </a>
+    <a href="/reports/" class="an-tab active">
+      <i data-lucide="file-text"></i> Reports &amp; Export
+    </a>
+  </div>
+
+  <!-- ── Filter ── -->
+  <div class="section-card">
+    <div class="section-title"><i data-lucide="sliders-horizontal"></i> Custom Report Filter</div>
+
+    <!-- Hidden real inputs that get submitted -->
+    <form method="GET" id="filterForm">
+      <input type="hidden" name="project"   id="val_project"   value="{{ sel_project }}">
+      <input type="hidden" name="status"    id="val_status"    value="{{ sel_status }}">
+      <input type="hidden" name="priority"  id="val_priority"  value="{{ sel_priority }}">
+      <input type="hidden" name="date_from" id="val_date_from" value="{{ sel_date_from }}">
+      <input type="hidden" name="date_to"   id="val_date_to"   value="{{ sel_date_to }}">
+
+      <div class="filter-row">
+
+        <!-- Project -->
+        <div class="filter-group">
+          <label>Project</label>
+          <div class="custom-dropdown">
+            <div class="dropdown-trigger" onclick="toggleDropdown('projectDropdown')">
+              <!-- folder -->
+              <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <span id="txt_project">{% if sel_project %}{% for p in projects %}{% if p.id|stringformat:"s" == sel_project %}{{ p.name }}{% endif %}{% endfor %}{% else %}All Projects{% endif %}</span>
+              <!-- chevron-down -->
+              <svg class="dd-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="projectDropdown" class="dropdown-menu">
+              <div class="dropdown-item {% if not sel_project %}selected{% endif %}"
+                   onclick="selectFilter('project','','All Projects')">
+                <!-- layers -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                <span>All Projects</span>
+              </div>
+              {% for p in projects %}
+              <div class="dropdown-item {% if sel_project == p.id|stringformat:'s' %}selected{% endif %}"
+                   onclick="selectFilter('project','{{ p.id }}','{{ p.name|escapejs }}')">
+                <!-- folder -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span>{{ p.name }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div class="filter-group">
+          <label>Status</label>
+          <div class="custom-dropdown">
+            <div class="dropdown-trigger" onclick="toggleDropdown('statusDropdown')">
+              <!-- activity -->
+              <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span id="txt_status">{% if sel_status == 'todo' %}To Do{% elif sel_status == 'doing' %}Doing{% elif sel_status == 'done' %}Done{% else %}All Status{% endif %}</span>
+              <svg class="dd-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="statusDropdown" class="dropdown-menu">
+              <div class="dropdown-item {% if not sel_status %}selected{% endif %}"
+                   onclick="selectFilter('status','','All Status')">
+                <!-- activity -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>All Status</span>
+              </div>
+              <div class="dropdown-item {% if sel_status == 'todo' %}selected{% endif %}"
+                   onclick="selectFilter('status','todo','To Do')">
+                <!-- circle -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+                <span>To Do</span>
+              </div>
+              <div class="dropdown-item {% if sel_status == 'doing' %}selected{% endif %}"
+                   onclick="selectFilter('status','doing','Doing')">
+                <!-- clock -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Doing</span>
+              </div>
+              <div class="dropdown-item {% if sel_status == 'done' %}selected{% endif %}"
+                   onclick="selectFilter('status','done','Done')">
+                <!-- check-circle -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span>Done</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Priority -->
+        <div class="filter-group">
+          <label>Priority</label>
+          <div class="custom-dropdown">
+            <div class="dropdown-trigger" onclick="toggleDropdown('priorityDropdown')">
+              <!-- flag -->
+              <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              <span id="txt_priority">{% if sel_priority == 'high' %}High{% elif sel_priority == 'medium' %}Medium{% elif sel_priority == 'low' %}Low{% else %}All Priority{% endif %}</span>
+              <svg class="dd-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="priorityDropdown" class="dropdown-menu">
+              <div class="dropdown-item {% if not sel_priority %}selected{% endif %}"
+                   onclick="selectFilter('priority','','All Priority')">
+                <!-- layers -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                <span>All Priority</span>
+              </div>
+              <div class="dropdown-item {% if sel_priority == 'high' %}selected{% endif %}"
+                   onclick="selectFilter('priority','high','High')">
+                <!-- chevrons-up -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+                <span>High</span>
+              </div>
+              <div class="dropdown-item {% if sel_priority == 'medium' %}selected{% endif %}"
+                   onclick="selectFilter('priority','medium','Medium')">
+                <!-- minus (medium = neutral) -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span>Medium</span>
+              </div>
+              <div class="dropdown-item {% if sel_priority == 'low' %}selected{% endif %}"
+                   onclick="selectFilter('priority','low','Low')">
+                <!-- chevrons-down -->
+                <svg class="dd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 6 12 11 17 6"/><polyline points="7 13 12 18 17 13"/></svg>
+                <span>Low</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Due From -->
+        <div class="filter-group">
+          <label>Due From</label>
+          <input type="date" id="ui_date_from" value="{{ sel_date_from }}"
+                 onchange="selectDateFilter('date_from', this.value)">
+        </div>
+
+        <!-- Due To -->
+        <div class="filter-group">
+          <label>Due To</label>
+          <input type="date" id="ui_date_to" value="{{ sel_date_to }}"
+                 onchange="selectDateFilter('date_to', this.value)">
+        </div>
+
+        {% if sel_project or sel_status or sel_priority or sel_date_from or sel_date_to %}
+        <div class="filter-group filter-group--btn">
+          <label>&nbsp;</label>
+          <a href="/reports/" class="btn-clear">✕ Clear</a>
+        </div>
+        {% endif %}
+
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Summary Stats ── -->
+  <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px"> 
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#ede9fe;color:#7c3aed"><i data-lucide="list-checks"></i></span>
+      <div><div class="kpi-val">{{ total }}</div><div class="kpi-lbl">Tasks Found</div></div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#d1fae5;color:#059669"><i data-lucide="check-circle-2"></i></span>
+      <div><div class="kpi-val">{{ done_count }}</div><div class="kpi-lbl">Completed</div></div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#fee2e2;color:#dc2626"><i data-lucide="alert-triangle"></i></span>
+      <div><div class="kpi-val">{{ over_count }}</div><div class="kpi-lbl">Overdue</div></div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#fef3c7;color:#d97706"><i data-lucide="percent"></i></span>
+      <div><div class="kpi-val">{{ comp_rate }}%</div><div class="kpi-lbl">Completion Rate</div></div>
+    </div>
+  </div>
+
+  <!-- ── Export Buttons ── -->
+  <div class="export-row">
+    <div class="export-title"><i data-lucide="download"></i> Export Report</div>
+    <div class="export-btns">
+      <a href="/reports/export/excel/?project={{ sel_project }}&status={{ sel_status }}&priority={{ sel_priority }}&date_from={{ sel_date_from }}&date_to={{ sel_date_to }}"
+         class="btn-export btn-excel no-drag no-select">
+        <i data-lucide="table-2" draggable="false"></i>
+        Export Excel (.xlsx)
+      </a>
+      <a href="/reports/export/pdf/?project={{ sel_project }}&status={{ sel_status }}&priority={{ sel_priority }}&date_from={{ sel_date_from }}&date_to={{ sel_date_to }}"
+         class="btn-export btn-pdf no-drag no-select">
+        <i data-lucide="file-down" draggable="false"></i>
+        Export PDF (.pdf)
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Task Table ── -->
+  <div class="section-card task-preview no-drag">
+    <div class="section-title">
+      <i data-lucide="table"></i>
+      Task Preview
+      {% if total > 200 %}<span class="preview-note">(showing first 200 of {{ total }})</span>{% endif %}
+    </div>
+
+    {% if tasks %}
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Project</th>
+            <th>Task Title</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Assigned To</th>
+            <th>Category</th>
+            <th>Due Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in tasks %}
+          {% with is_over=task.is_overdue %}
+          <tr {% if is_over %}class="row-overdue no-drag"{% else %}class="no-drag"{% endif %}>
+            <td class="td-num">{{ forloop.counter }}</td>
+            <td>
+              <a href="/project/{{ task.project.id }}/" class="proj-link">{{ task.project.name|truncatechars:24 }}</a>
+            </td>
+            <td>
+              <a href="/project/{{ task.project.id }}/?open_task={{ task.id }}">
+                {{ task.title|truncatechars:48 }}
+              </a>
+              {% if is_over %}<span class="overdue-badge">Overdue</span>{% endif %}
+            </td>
+            <td><span class="status-tag status--{{ task.status }}">{{ task.get_status_display }}</span></td>
+            <td><span class="priority-tag priority--{{ task.priority }}">{{ task.get_priority_display }}</span></td>
+            <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username|truncatechars:20 }}</td>
+            <td>{{ task.category.name|default:"-" }}</td>
+            <td>{% if task.due_date %}{{ task.due_date|date:"d M Y" }}{% else %}-{% endif %}</td>
+          </tr>
+          {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-msg">
+      <i data-lucide="inbox" style="width:40px;height:40px;color:#d1d5db"></i>
+      <p>No tasks found matching your filters.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Task Detail Modal -->
+  <div id="taskModal" class="modal">
+    <div class="modal-content">
+      <div id="modalBody">Loading...</div>
+      <button onclick="closeTaskModal()" class="modal-close">Close</button>
+    </div>
+  </div>
+
+</div>
+
+<style>
+.analytics-wrap{ max-width:1200px; margin:0 auto; padding:12px 10px; } @media(min-width:640px){ .analytics-wrap{ padding:24px 16px; } }
+.an-tabs{ display:flex; gap:8px; margin-bottom:28px; border-bottom:2px solid var(--border,#e5e7eb);
+  user-select: none; -webkit-user-select: none; -moz-user-select: none; -webkit-user-drag: none; }
+.an-tabs *{ user-select: none; -webkit-user-select: none; -moz-user-select: none; -webkit-user-drag: none; }
+.an-tab{ display:flex; align-items:center; gap:6px; padding:8px 18px; border-radius:8px 8px 0 0;
+  font-size:.9rem; font-weight:500; color:var(--text-muted,#6b7280); text-decoration:none;
+  border:1px solid transparent; border-bottom:none; transition:all .2s;
+  user-select: none; -webkit-user-select: none; -moz-user-select: none; -webkit-user-drag: none; }
+.an-tab *{ user-select: none; -webkit-user-select: none; -moz-user-select: none; -webkit-user-drag: none; }
+.an-tab:hover{ background:var(--bg-hover,#f3f4f6); }
+.an-tab.active{ background:var(--bg-card,#fff); border-color:var(--border,#e5e7eb);
+  color:var(--accent,#6366f1); margin-bottom:-2px; }
+
+.section-card{ background:var(--bg-card,#fff); border:1px solid var(--border,#e5e7eb);
+  border-radius:12px; padding:20px; margin-bottom:20px; }
+.section-title{ font-weight:600; font-size:1rem; display:flex; align-items:center; gap:8px;
+  color:var(--text,#111827); margin-bottom:16px; }
+.section-title svg{ width:18px; height:18px; color:var(--accent,#6366f1); }
+.preview-note{ font-size:.78rem; font-weight:400; color:var(--text-muted,#9ca3af); margin-left:4px; }
+
+/* ── Filter layout ── */
+.filter-row{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; }
+.filter-group{ display:flex; flex-direction:column; gap:4px; min-width:130px; flex:1; }
+.filter-group label{ font-size:.78rem; font-weight:500; color:var(--text-muted,#6b7280); }
+.filter-group input[type="date"]{
+  padding:7px 10px; border:1px solid var(--border,#d1d5db); border-radius:8px;
+  font-size:.875rem; background:var(--bg-input,#f9fafb); color:var(--text,#111827);
+  outline:none; transition:border-color .2s; }
+.filter-group input[type="date"]:focus{ border-color:var(--accent,#6366f1); background:#fff; }
+.filter-group--btn label{ visibility:hidden; }
+.btn-clear{ padding:7px 14px; border:1px solid #fecaca; border-radius:8px;
+  color:#dc2626; background:#fef2f2; font-size:.875rem; text-decoration:none;
+  font-weight:500; white-space:nowrap; display:inline-block; }
+.btn-clear:hover{ background:#fee2e2; }
+
+/* ── Custom Dropdown (same style as file_manager) ── */
+.custom-dropdown{ position:relative; display:block; }
+.dropdown-trigger{
+  display:flex; align-items:center; gap:.5rem;
+  padding:.5rem 1rem; border:1px solid #e5e7eb; border-radius:.75rem;
+  background:#fff; cursor:pointer; transition:all .2s; min-width:150px;
+  user-select:none; -webkit-user-select:none;
+  box-shadow:0 4px 12px rgba(0,0,0,.06);
+  font-size:.875rem; color:#374151;
+}
+.dropdown-trigger:hover{ border-color:#d1d5db; }
+.dd-icon{ width:16px; height:16px; flex-shrink:0; color:#6b7280; }
+.dd-arrow{ width:16px; height:16px; flex-shrink:0; color:#9ca3af; margin-left:auto; transition:transform .2s; }
+.custom-dropdown.open .dd-arrow{ transform:rotate(180deg); }
+.dropdown-trigger > span{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.dropdown-menu{
+  position:absolute; top:100%; left:0; right:0; margin-top:.5rem;
+  background:#fff; border:1px solid #e5e7eb; border-radius:.75rem;
+  box-shadow:0 10px 25px rgba(0,0,0,.1); z-index:1000;
+  display:none; max-height:220px; overflow-y:auto; padding:.25rem 0;
+}
+.dropdown-menu.show{ display:block; }
+.dropdown-item{
+  display:flex; align-items:center; gap:.75rem;
+  padding:.65rem 1rem; font-size:.875rem; color:#374151;
+  cursor:pointer; transition:background .15s;
+  user-select:none; -webkit-user-select:none;
+}
+.dropdown-item:hover{ background:#f3f4f6; color:#111827; }
+.dropdown-item.selected{ background:#eef2ff; color:#4f46e5; font-weight:600; }
+
+/* KPI */
+.kpi-grid{ display:grid; gap:14px; }
+.kpi-card{ background:var(--bg-card,#fff); border:1px solid var(--border,#e5e7eb);
+  border-radius:12px; padding:16px; display:flex; align-items:center; gap:14px;
+  box-shadow:0 1px 4px rgba(0,0,0,.04); }
+.kpi-icon{ width:44px; height:44px; border-radius:10px; display:flex; align-items:center;
+  justify-content:center; flex-shrink:0; }
+.kpi-icon svg{ width:22px; height:22px; }
+.kpi-val{ font-size:1.5rem; font-weight:700; color:var(--text,#111827); }
+.kpi-lbl{ font-size:.78rem; color:var(--text-muted,#6b7280); margin-top:2px; }
+
+/* Export */
+.export-row{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap;
+  gap:12px; margin-bottom:20px; }
+.export-title{ display:flex; align-items:center; gap:8px; font-weight:600; font-size:.95rem;
+  color:var(--text,#374151); }
+.export-title svg{ width:18px; height:18px; }
+.export-btns{ display:flex; gap:10px; flex-wrap:wrap; }
+.btn-export{ display:flex; align-items:center; gap:8px; padding:10px 20px;
+  border-radius:10px; font-size:.9rem; font-weight:600; text-decoration:none;
+  transition:all .2s; border:none; cursor:pointer; }
+.btn-export svg{ width:18px; height:18px; }
+.btn-excel{ background:#16a34a; color:#fff; }
+.btn-excel:hover{ background:#15803d; box-shadow:0 4px 12px rgba(22,163,74,.3); transform:translateY(-1px); }
+.btn-pdf{ background:#dc2626; color:#fff; }
+.btn-pdf:hover{ background:#b91c1c; box-shadow:0 4px 12px rgba(220,38,38,.3); transform:translateY(-1px); }
+
+/* Table */
+.report-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.report-table{ width:100%; border-collapse:collapse; font-size:.875rem; }
+.report-table th{ text-align:left; padding:10px 12px; font-size:.8rem; font-weight:600;
+  color:var(--text-muted,#6b7280); border-bottom:2px solid var(--border,#e5e7eb); white-space:nowrap; }
+.report-table td{ padding:11px 12px; border-bottom:1px solid var(--border,#f3f4f6); vertical-align:middle; }
+.report-table tr:last-child td{ border-bottom:none; }
+.report-table tr:hover td{ background:var(--bg-hover,#f9fafb); }
+.row-overdue{ background:#fff5f5 !important; }
+.td-num{ color:var(--text-muted,#9ca3af); font-weight:600; width:36px; }
+.proj-link{ color:var(--text-muted,#6b7280); text-decoration:none; font-size:.85rem; }
+.proj-link:hover{ color:var(--accent,#6366f1); }
+.task-link{ color:var(--text,#111827); text-decoration:none; font-weight:500; }
+.task-link:hover{ color:var(--accent,#6366f1); }
+.overdue-badge{ font-size:.7rem; padding:1px 6px; background:#fee2e2; color:#dc2626;
+  border-radius:10px; font-weight:600; margin-left:6px; }
+.status-tag, .priority-tag{ font-size:.78rem; padding:3px 10px; border-radius:20px; font-weight:600; }
+.status--todo{ background:#e2e8f0; color:#475569; }
+.status--doing{ background:#fef3c7; color:#92400e; }
+.status--done{ background:#d1fae5; color:#065f46; }
+.priority--high{ background:#fee2e2; color:#991b1b; }
+.priority--medium{ background:#fef3c7; color:#92400e; }
+.priority--low{ background:#f0fdf4; color:#166534; }
+
+.empty-msg{ text-align:center; padding:40px; }
+.empty-msg p{ color:var(--text-muted,#9ca3af); margin-top:12px; }
+
+/* Drag and Selection Controls */
+.no-drag {
+    -webkit-user-drag: none;
+    user-drag: none;
+}
+
+.no-select {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Modal */
+.modal{ display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%;
+  background-color:rgba(0,0,0,0.5); }
+.modal-content{ background-color:var(--bg-card,#fff); margin:5% auto; padding:20px;
+  border-radius:12px; width:90%; max-width:800px; max-height:80vh; overflow-y:auto;
+  position:relative; box-shadow:0 10px 40px rgba(0,0,0,0.2); }
+.modal-close{ position:absolute; top:15px; right:15px; padding:8px 16px;
+  background:var(--accent,#6366f1); color:white; border:none; border-radius:8px;
+  cursor:pointer; font-size:14px; font-weight:500; }
+.modal-close:hover{ background:#5558dd; }
+#modalBody{ min-height:200px; }
+
+@media(max-width:700px){
+  .kpi-grid{ grid-template-columns:repeat(2,1fr) !important; }
+  .export-row{ flex-direction:column; align-items:flex-start; }
+  .filter-row{ flex-direction:column; }
+  .custom-dropdown, .filter-group{ width:100%; }
+}
+</style>
+
+<script>
+// ── Dropdown toggle ────────────────────────────────────────
+function toggleDropdown(id) {
+  const menu    = document.getElementById(id);
+  const wrapper = menu.closest('.custom-dropdown');
+  const isOpen  = menu.classList.contains('show');
+  closeAllDropdowns();
+  if (!isOpen) {
+    menu.classList.add('show');
+    wrapper.classList.add('open');
+  }
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+  document.querySelectorAll('.custom-dropdown.open').forEach(w => w.classList.remove('open'));
+}
+
+// Close on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.custom-dropdown')) closeAllDropdowns();
+});
+
+// ── Select filter value & auto-submit ──────────────────────
+function selectFilter(field, value, label) {
+  // Update hidden input
+  document.getElementById('val_' + field).value = value;
+  // Update displayed text
+  document.getElementById('txt_' + field).textContent = label;
+  // Mark selected item
+  const menuId = field + 'Dropdown';
+  document.querySelectorAll('#' + menuId + ' .dropdown-item').forEach(function(item) {
+    item.classList.remove('selected');
+  });
+  event.currentTarget.classList.add('selected');
+
+  closeAllDropdowns();
+  document.getElementById('filterForm').submit();
+}
+
+// ── Date filter ────────────────────────────────────────────
+function selectDateFilter(field, value) {
+  document.getElementById('val_' + field).value = value;
+  document.getElementById('filterForm').submit();
+}
+
+// ── Task Preview Drag Prevention ───────────────────────────────
+document.addEventListener("DOMContentLoaded", function () {
+    const preview = document.querySelector(".task-preview");
+
+    if (preview) {
+        preview.addEventListener("dragstart", function (e) {
+            e.preventDefault();
+        });
+    }
+});
+
+// ── Task Modal ───────────────────────────────────────────────
+function openTaskModal(event, taskId) {
+    event.preventDefault();
+
+    const modal = document.getElementById('taskModal');
+    const modalBody = document.getElementById('modalBody');
+
+    modal.style.display = 'block';
+    modalBody.innerHTML = 'Loading...';
+
+    fetch(`/project/task/${taskId}/detail/`)
+        .then(res => res.text())
+        .then(data => {
+            modalBody.innerHTML = data;
+        })
+        .catch(err => {
+            modalBody.innerHTML = 'Error loading task';
+        });
+}
+
+function closeTaskModal() {
+    document.getElementById('taskModal').style.display = 'none';
+}
+</script>
+{% endblock %}

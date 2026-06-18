@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}KanFlow{% endblock %}</title>
+
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "surface":                   "#f7f9fb",
+                        "surface-bright":            "#f7f9fb",
+                        "surface-container-lowest":  "#ffffff",
+                        "surface-container-low":     "#f2f4f6",
+                        "surface-container":         "#eceef0",
+                        "surface-container-high":    "#e6e8ea",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-dim":               "#d8dadc",
+                        "on-surface":                "#191c1e",
+                        "on-surface-variant":        "#474651",
+                        "outline":                   "#777682",
+                        "outline-variant":           "#c8c5d3",
+                        "primary":                   "#1a146b",
+                        "primary-container":         "#312e81",
+                        "primary-fixed":             "#e2dfff",
+                        "primary-fixed-dim":         "#c3c0ff",
+                        "on-primary":                "#ffffff",
+                        "on-primary-container":      "#9c9af4",
+                        "on-primary-fixed":          "#100563",
+                        "on-primary-fixed-variant":  "#3e3c8f",
+                        "secondary":                 "#515f74",
+                        "secondary-container":       "#d5e3fc",
+                        "on-secondary":              "#ffffff",
+                        "on-secondary-container":    "#57657a",
+                        "tertiary-fixed":            "#6ffbbe",
+                        "tertiary-fixed-dim":        "#4edea3",
+                        "on-tertiary-container":     "#14ba82",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "error":                     "#ba1a1a",
+                        "error-container":           "#ffdad6",
+                        "on-error-container":        "#93000a",
+                        "background":                "#f7f9fb",
+                        "on-background":             "#191c1e",
+                        "inverse-surface":           "#2d3133",
+                        "inverse-on-surface":        "#eff1f3",
+                        "surface-tint":              "#5654a8",
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans", "sans-serif"],
+                        "body":     ["Inter", "sans-serif"],
+                        "label":    ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg":   "0.5rem",
+                        "xl":   "0.75rem",
+                        "2xl":  "1rem",
+                        "3xl":  "1.5rem",
+                        "4xl":  "2rem",
+                        "full": "9999px",
+                    },
+                    boxShadow: {
+                        "card":    "0 2px 8px rgba(26,20,107,0.04), 0 1px 2px rgba(26,20,107,0.02)",
+                        "card-hover": "0 20px 48px rgba(26,20,107,0.08), 0 4px 12px rgba(26,20,107,0.04)",
+                        "float":   "0 40px 80px rgba(26,20,107,0.06)",
+                        "primary": "0 8px 24px rgba(26,20,107,0.25)",
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .font-headline, h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background-color: #f7f9fb; color: #191c1e; }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+            font-size: 20px;
+        }
+        .fill-icon { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .glass-sidebar {
+            background: rgba(242, 244, 246, 0.92);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+        }
+
+        .aura-dot { filter: blur(4px); }
+        .aura-dot-lg { filter: blur(8px); }
+
+        header, header * { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+        header input { user-select: text; -webkit-user-select: text; -webkit-user-drag: auto; }
+
+        .btn-primary-gradient {
+            background: linear-gradient(135deg, #1a146b 0%, #312e81 100%);
+        }
+        .btn-primary-gradient:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(26,20,107,0.3); }
+        .btn-primary-gradient:active { transform: translateY(0); }
+
+        .input-inset {
+            background: #f2f4f6; border: none;
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+        .input-inset:focus {
+            outline: none; border-bottom-color: #1a146b;
+            background: #ffffff; box-shadow: none;
+        }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem 1rem; border-radius: 0.75rem;
+            font-size: 0.875rem; font-weight: 500; color: #515f74;
+            transition: all 0.15s ease;
+            user-select: none; -webkit-user-select: none; -webkit-user-drag: none;
+        }
+        .nav-item:hover { background: rgba(99, 91, 255, 0.06); color: #1a146b; transform: translateX(2px); }
+        .nav-item.active { background: #e2dfff; color: #1a146b; font-weight: 700; }
+
+        .kanban-card { transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+        .kanban-card:hover { box-shadow: 0 20px 48px rgba(26,20,107,0.08), 0 4px 12px rgba(26,20,107,0.04); transform: translateY(-2px); }
+
+        .surface-tinted {
+            background-color: #f7f9fb;
+            background-image: linear-gradient(rgba(86,84,168,0.03) 0%, rgba(86,84,168,0.03) 100%);
+        }
+        .modal-overlay { background: rgba(25, 21, 95, 0.45); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #c8c5d3; border-radius: 999px; }
+
+        .page-enter { animation: pageEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        @keyframes pageEnter {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .nav-sub { overflow: hidden; max-height: 0; transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        .nav-sub.open { max-height: 200px; }
+        .nav-item--sub { padding-left: 2.75rem; font-size: 0.82rem; }
+        .nav-item--sub:hover { transform: translateX(3px); }
+        .rotate-90 { transform: rotate(90deg); }
+
+        /* ── Mobile Sidebar Drawer ── */
+        #mobileSidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #mobileSidebar.open { transform: translateX(0); }
+        #sidebarOverlay { transition: opacity 0.3s ease; }
+
+        /* ── Bottom Nav (Mobile) ── */
+        .bottom-nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 2px; flex: 1; padding: 8px 4px;
+            font-size: 10px; font-weight: 600; color: #515f74;
+            transition: color 0.15s ease; text-decoration: none;
+            border-radius: 12px; margin: 4px 2px;
+        }
+        .bottom-nav-item.active { color: #1a146b; background: #e2dfff; }
+        .bottom-nav-item:active { opacity: 0.7; }
+
+        /* ── Responsive Notification Panel ── */
+        @media (max-width: 640px) {
+            #notifPanel {
+                position: fixed !important;
+                top: 64px !important;
+                left: 8px !important;
+                right: 8px !important;
+                width: auto !important;
+            }
+        }
+
+        /* ── Safe area for bottom nav ── */
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            #bottomNav { padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="surface-tinted min-h-screen flex">
+
+    <!-- ══════════════════════════════════════
+         MOBILE SIDEBAR OVERLAY
+    ══════════════════════════════════════ -->
+    <div id="sidebarOverlay"
+        class="lg:hidden fixed inset-0 z-40 bg-black/40 hidden opacity-0"
+        onclick="closeMobileSidebar()"></div>
+
+    <!-- ══════════════════════════════════════
+         MOBILE SIDEBAR DRAWER
+    ══════════════════════════════════════ -->
+    <aside id="mobileSidebar"
+        class="lg:hidden fixed inset-y-0 left-0 z-50 w-72 glass-sidebar border-r border-white/50 flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 py-5 border-b border-white/30">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl btn-primary-gradient flex items-center justify-center shadow-primary/20 shadow-lg">
+                    <span class="material-symbols-outlined text-white fill-icon" style="font-size:18px">grid_view</span>
+                </div>
+                <div>
+                    <h1 class="font-headline font-extrabold text-base text-primary leading-none">KanFlow</h1>
+                    <p class="text-[9px] text-secondary uppercase tracking-widest font-bold mt-0.5">Workspace</p>
+                </div>
+            </div>
+            <button onclick="closeMobileSidebar()"
+                class="w-8 h-8 rounded-xl hover:bg-surface-container flex items-center justify-center text-secondary transition-colors">
+                <span class="material-symbols-outlined" style="font-size:20px">close</span>
+            </button>
+        </div>
+
+        <!-- Nav -->
+        <nav class="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+            <a href="/" draggable="false" class="nav-item {% if request.path == '/' %}active{% endif %}" onclick="closeMobileSidebar()">
+                <span class="material-symbols-outlined {% if request.path == '/' %}fill-icon{% endif %}">grid_view</span>
+                Projects
+            </a>
+            <a href="/my-tasks/" draggable="false" class="nav-item {% if '/my-tasks/' in request.path %}active{% endif %}" onclick="closeMobileSidebar()">
+                <span class="material-symbols-outlined {% if '/my-tasks/' in request.path %}fill-icon{% endif %}">assignment</span>
+                My Tasks
+            </a>
+
+            <!-- Analytics group -->
+            <div class="nav-group">
+                <button onclick="toggleNavGroup(this)"
+                    class="nav-item w-full text-left {% if '/analytics/' in request.path or '/reports/' in request.path %}active{% endif %}"
+                    aria-expanded="{% if '/analytics/' in request.path or '/reports/' in request.path %}true{% else %}false{% endif %}">
+                    <span class="material-symbols-outlined {% if '/analytics/' in request.path or '/reports/' in request.path %}fill-icon{% endif %}">leaderboard</span>
+                    <span class="flex-1">Analytics</span>
+                    <span class="material-symbols-outlined nav-chevron transition-transform duration-200 {% if '/analytics/' in request.path or '/reports/' in request.path %}rotate-90{% endif %}" style="font-size:16px">chevron_right</span>
+                </button>
+                <div class="nav-sub {% if '/analytics/' in request.path or '/reports/' in request.path %}open{% endif %}">
+                    <a href="/analytics/" draggable="false" class="nav-item nav-item--sub {% if request.path == '/analytics/' %}active{% endif %}" onclick="closeMobileSidebar()">
+                        <span class="material-symbols-outlined {% if request.path == '/analytics/' %}fill-icon{% endif %}" style="font-size:18px">person</span>Personal
+                    </a>
+                    <a href="/analytics/team/" draggable="false" class="nav-item nav-item--sub {% if '/analytics/team/' in request.path %}active{% endif %}" onclick="closeMobileSidebar()">
+                        <span class="material-symbols-outlined {% if '/analytics/team/' in request.path %}fill-icon{% endif %}" style="font-size:18px">group</span>Team
+                    </a>
+                    <a href="/reports/" draggable="false" class="nav-item nav-item--sub {% if '/reports/' in request.path %}active{% endif %}" onclick="closeMobileSidebar()">
+                        <span class="material-symbols-outlined {% if '/reports/' in request.path %}fill-icon{% endif %}" style="font-size:18px">description</span>Reports &amp; Export
+                    </a>
+                </div>
+            </div>
+
+            <!-- Schedule group -->
+            <div class="nav-group">
+                <button onclick="toggleNavGroup(this)"
+                    class="nav-item w-full text-left {% if '/schedule/' in request.path %}active{% endif %}"
+                    aria-expanded="{% if '/schedule/' in request.path %}true{% else %}false{% endif %}">
+                    <span class="material-symbols-outlined {% if '/schedule/' in request.path %}fill-icon{% endif %}">calendar_month</span>
+                    <span class="flex-1">Schedule</span>
+                    <span class="material-symbols-outlined nav-chevron transition-transform duration-200 {% if '/schedule/' in request.path %}rotate-90{% endif %}" style="font-size:16px">chevron_right</span>
+                </button>
+                <div class="nav-sub {% if '/schedule/' in request.path %}open{% endif %}">
+                    <div id="mobileSchedNavEmpty" style="display:none">
+                        <a href="/schedule/" draggable="false" class="nav-item nav-item--sub" onclick="closeMobileSidebar()">
+                            <span class="material-symbols-outlined" style="font-size:16px">add_circle</span>สร้างตาราง
+                        </a>
+                    </div>
+                    <div id="mobileSchedNavItems"></div>
+                </div>
+            </div>
+
+            <a href="/files/" draggable="false" class="nav-item {% if '/files/' in request.path %}active{% endif %}" onclick="closeMobileSidebar()">
+                <span class="material-symbols-outlined {% if '/files/' in request.path %}fill-icon{% endif %}">folder</span>
+                Files
+            </a>
+            <a href="/team/" draggable="false" class="nav-item {% if '/team/' in request.path %}active{% endif %}" onclick="closeMobileSidebar()">
+                <span class="material-symbols-outlined {% if '/team/' in request.path %}fill-icon{% endif %}">group</span>
+                Team
+            </a>
+
+            <div class="px-4 pt-5 pb-2">
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest">Workspace</p>
+            </div>
+
+            <a href="/settings/" draggable="false" class="nav-item {% if '/settings/' in request.path %}active{% endif %}" onclick="closeMobileSidebar()">
+                <span class="material-symbols-outlined {% if '/settings/' in request.path %}fill-icon{% endif %}">settings</span>
+                Settings
+            </a>
+            <a href="/help/" draggable="false" class="nav-item {% if '/help/' in request.path %}active{% endif %}" onclick="closeMobileSidebar()">
+                <span class="material-symbols-outlined {% if '/help/' in request.path %}fill-icon{% endif %}">help</span>
+                Help
+            </a>
+        </nav>
+
+        <!-- User info at bottom of drawer -->
+        <div class="border-t border-white/30 px-4 py-4">
+            <a href="{% url 'profile' %}" class="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container transition-colors" onclick="closeMobileSidebar()">
+                {% if request.user.profile.avatar %}
+                <img src="{{ request.user.profile.avatar.url }}" class="w-9 h-9 rounded-full object-cover ring-2 ring-white shadow-sm shrink-0" alt="avatar">
+                {% else %}
+                <div class="w-9 h-9 rounded-full btn-primary-gradient flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    {{ request.user.profile.display_name|default:request.user.username|slice:":1"|upper }}
+                </div>
+                {% endif %}
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-on-surface truncate">{{ request.user.profile.display_name|default:request.user.username }}</p>
+                    <p class="text-xs text-secondary truncate">{{ request.user.email|default:"" }}</p>
+                </div>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ══════════════════════════════════════
+         DESKTOP SIDEBAR
+    ══════════════════════════════════════ -->
+    <aside class="hidden lg:flex flex-col w-64 fixed inset-y-0 left-0 z-40 glass-sidebar border-r border-white/50">
+        <div class="flex items-center gap-3 px-5 py-6 mb-2">
+            <div class="w-10 h-10 rounded-xl btn-primary-gradient flex items-center justify-center shadow-primary/20 shadow-lg">
+                <span class="material-symbols-outlined text-white fill-icon">grid_view</span>
+            </div>
+            <div>
+                <h1 class="font-headline font-extrabold text-lg text-primary leading-none">KanFlow</h1>
+                <p class="text-[10px] text-secondary uppercase tracking-widest font-bold mt-0.5">Workspace</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-3 space-y-0.5 overflow-y-auto">
+            <a href="/" draggable="false" class="nav-item {% if request.path == '/' %}active{% endif %}">
+                <span class="material-symbols-outlined {% if request.path == '/' %}fill-icon{% endif %}">grid_view</span>
+                Projects
+            </a>
+            <a href="/my-tasks/" draggable="false" class="nav-item {% if '/my-tasks/' in request.path %}active{% endif %}">
+                <span class="material-symbols-outlined {% if '/my-tasks/' in request.path %}fill-icon{% endif %}">assignment</span>
+                My Tasks
+            </a>
+            <div class="nav-group">
+                <button onclick="toggleNavGroup(this)"
+                    class="nav-item w-full text-left {% if '/analytics/' in request.path or '/reports/' in request.path %}active{% endif %}"
+                    aria-expanded="{% if '/analytics/' in request.path or '/reports/' in request.path %}true{% else %}false{% endif %}">
+                    <span class="material-symbols-outlined {% if '/analytics/' in request.path or '/reports/' in request.path %}fill-icon{% endif %}">leaderboard</span>
+                    <span class="flex-1">Analytics</span>
+                    <span class="material-symbols-outlined nav-chevron transition-transform duration-200 {% if '/analytics/' in request.path or '/reports/' in request.path %}rotate-90{% endif %}" style="font-size:16px">chevron_right</span>
+                </button>
+                <div class="nav-sub {% if '/analytics/' in request.path or '/reports/' in request.path %}open{% endif %}">
+                    <a href="/analytics/" draggable="false" class="nav-item nav-item--sub {% if request.path == '/analytics/' %}active{% endif %}">
+                        <span class="material-symbols-outlined {% if request.path == '/analytics/' %}fill-icon{% endif %}" style="font-size:18px">person</span>Personal
+                    </a>
+                    <a href="/analytics/team/" draggable="false" class="nav-item nav-item--sub {% if '/analytics/team/' in request.path %}active{% endif %}">
+                        <span class="material-symbols-outlined {% if '/analytics/team/' in request.path %}fill-icon{% endif %}" style="font-size:18px">group</span>Team
+                    </a>
+                    <a href="/reports/" draggable="false" class="nav-item nav-item--sub {% if '/reports/' in request.path %}active{% endif %}">
+                        <span class="material-symbols-outlined {% if '/reports/' in request.path %}fill-icon{% endif %}" style="font-size:18px">description</span>Reports &amp; Export
+                    </a>
+                </div>
+            </div>
+            <div class="nav-group" id="schedNavGroup">
+                <button onclick="toggleNavGroup(this)"
+                    class="nav-item w-full text-left {% if '/schedule/' in request.path %}active{% endif %}"
+                    aria-expanded="{% if '/schedule/' in request.path %}true{% else %}false{% endif %}">
+                    <span class="material-symbols-outlined {% if '/schedule/' in request.path %}fill-icon{% endif %}">calendar_month</span>
+                    <span class="flex-1">Schedule</span>
+                    <span class="material-symbols-outlined nav-chevron transition-transform duration-200 {% if '/schedule/' in request.path %}rotate-90{% endif %}" style="font-size:16px">chevron_right</span>
+                </button>
+                <div class="nav-sub {% if '/schedule/' in request.path %}open{% endif %}" id="schedNavSub">
+                    <div id="schedNavEmpty" style="display:none">
+                        <a href="/schedule/" draggable="false" class="nav-item nav-item--sub {% if request.path == '/schedule/' %}active{% endif %}">
+                            <span class="material-symbols-outlined" style="font-size:16px">add_circle</span>สร้างตาราง
+                        </a>
+                    </div>
+                    <div id="schedNavItems"></div>
+                </div>
+            </div>
+            <a href="/files/" draggable="false" class="nav-item {% if '/files/' in request.path %}active{% endif %}">
+                <span class="material-symbols-outlined {% if '/files/' in request.path %}fill-icon{% endif %}">folder</span>
+                Files
+            </a>
+            <a href="/team/" draggable="false" class="nav-item {% if '/team/' in request.path %}active{% endif %}">
+                <span class="material-symbols-outlined {% if '/team/' in request.path %}fill-icon{% endif %}">group</span>
+                Team
+            </a>
+            <div class="px-4 pt-5 pb-2">
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest">Workspace</p>
+            </div>
+            <a href="/settings/" draggable="false" class="nav-item {% if '/settings/' in request.path %}active{% endif %}">
+                <span class="material-symbols-outlined {% if '/settings/' in request.path %}fill-icon{% endif %}">settings</span>
+                Settings
+            </a>
+            <a href="/help/" draggable="false" class="nav-item {% if '/help/' in request.path %}active{% endif %}">
+                <span class="material-symbols-outlined {% if '/help/' in request.path %}fill-icon{% endif %}">help</span>
+                Help
+            </a>
+        </nav>
+    </aside>
+
+    <!-- ══════════════════════════════════════
+         MAIN AREA
+    ══════════════════════════════════════ -->
+    <div class="flex-1 lg:ml-64 flex flex-col min-h-screen pb-16 lg:pb-0">
+
+        <!-- Top Header -->
+        <header class="sticky top-0 z-30 glass-panel border-b border-white/50 shadow-[0_1px_0_rgba(26,20,107,0.04)]">
+            <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-14 sm:h-16">
+
+                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <!-- Mobile hamburger menu -->
+                    <button onclick="openMobileSidebar()"
+                        class="lg:hidden p-2 rounded-xl hover:bg-surface-container transition-colors text-secondary shrink-0">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <h1 class="font-headline font-bold text-base sm:text-xl text-primary tracking-tight truncate">
+                        {% block page_title %}{% endblock %}
+                    </h1>
+                </div>
+
+                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    {% block header_actions %}{% endblock %}
+
+                    <!-- Notification Bell -->
+                    <div class="relative" id="notifWrapper">
+                        <button onclick="toggleNotifPanel()"
+                            class="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl hover:bg-surface-container transition-colors text-secondary">
+                            <span class="material-symbols-outlined" style="font-size:20px">notifications</span>
+                            <span id="notifBadge"
+                                class="hidden absolute top-1 right-1 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-error ring-2 ring-white shadow-sm"></span>
+                        </button>
+
+                        <!-- Notification Panel — responsive -->
+                        <div id="notifPanel"
+                            class="hidden absolute right-0 top-12 w-80 max-w-[calc(100vw-16px)] bg-surface-container-lowest rounded-3xl shadow-float border border-white/60 z-50 overflow-hidden">
+                            <div class="flex items-center justify-between px-5 py-4 border-b border-surface-container">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary" style="font-size:18px">notifications</span>
+                                    <h4 class="font-headline font-bold text-on-surface text-sm">Notifications</h4>
+                                    <span id="unreadCount" class="hidden text-[10px] font-black text-primary bg-primary-fixed border border-primary-fixed-dim px-1.5 py-0.5 rounded-full"></span>
+                                </div>
+                                <button onclick="markAllRead()" class="text-xs text-primary hover:text-primary-container font-semibold transition-colors">
+                                    Mark all read
+                                </button>
+                            </div>
+                            <div id="notifList" class="max-h-72 sm:max-h-80 overflow-y-auto divide-y divide-surface-container">
+                                <div class="flex flex-col items-center justify-center py-10">
+                                    <span class="material-symbols-outlined text-outline-variant text-4xl mb-2">notifications_off</span>
+                                    <p class="text-xs text-secondary">Loading...</p>
+                                </div>
+                            </div>
+                            <div class="px-5 py-3 border-t border-surface-container bg-surface-container-low/50">
+                                <p class="text-[11px] text-secondary text-center">Last 20 notifications</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile -->
+                    <div class="relative" id="profileWrapper">
+                        <button onclick="toggleProfileMenu()"
+                            class="flex items-center gap-1.5 sm:gap-2 pl-1 pr-2 sm:pr-2.5 h-8 sm:h-9 rounded-xl hover:bg-surface-container transition-colors">
+                            {% if request.user.profile.avatar %}
+                            <img id="headerAvatar" src="{{ request.user.profile.avatar.url }}"
+                                class="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover ring-2 ring-white shadow-sm shrink-0" alt="avatar">
+                            {% else %}
+                            <div id="headerAvatar" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full btn-primary-gradient flex items-center justify-center text-white text-[10px] sm:text-[11px] font-bold shrink-0">
+                                {{ request.user.profile.display_name|default:request.user.username|slice:":1"|upper }}
+                            </div>
+                            {% endif %}
+                            <span id="headerDisplayName" class="hidden sm:inline text-sm font-semibold text-on-surface max-w-[100px] lg:max-w-[120px] truncate">
+                                {{ request.user.profile.display_name|default:request.user.username }}
+                            </span>
+                            <span class="material-symbols-outlined text-secondary hidden sm:inline" style="font-size:18px">expand_more</span>
+                        </button>
+
+                        <div id="profileMenu"
+                            class="hidden absolute right-0 top-11 w-48 bg-surface-container-lowest rounded-2xl shadow-float border border-white/60 z-50 overflow-hidden">
+                            <a href="{% url 'profile' %}"
+                                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors">
+                                <span class="material-symbols-outlined text-secondary" style="font-size:16px">person</span>
+                                View Profile
+                            </a>
+                            <a href="/settings/"
+                                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors">
+                                <span class="material-symbols-outlined text-secondary" style="font-size:16px">settings</span>
+                                Settings
+                            </a>
+                            <form method="POST" action="{% url 'logout' %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                    class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-error hover:bg-error-container/40 transition-colors">
+                                    <span class="material-symbols-outlined" style="font-size:16px">logout</span>
+                                    Logout
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="flex-1 page-enter">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         BOTTOM NAVIGATION (Mobile Only)
+    ══════════════════════════════════════ -->
+    <nav id="bottomNav"
+        class="lg:hidden fixed bottom-0 left-0 right-0 z-30 glass-panel border-t border-white/50 flex items-center px-2 pt-1 pb-1">
+        <a href="/" class="bottom-nav-item {% if request.path == '/' %}active{% endif %}">
+            <span class="material-symbols-outlined {% if request.path == '/' %}fill-icon{% endif %}" style="font-size:22px">grid_view</span>
+            <span>Projects</span>
+        </a>
+        <a href="/my-tasks/" class="bottom-nav-item {% if '/my-tasks/' in request.path %}active{% endif %}">
+            <span class="material-symbols-outlined {% if '/my-tasks/' in request.path %}fill-icon{% endif %}" style="font-size:22px">assignment</span>
+            <span>My Tasks</span>
+        </a>
+        <a href="/analytics/" class="bottom-nav-item {% if '/analytics/' in request.path %}active{% endif %}">
+            <span class="material-symbols-outlined {% if '/analytics/' in request.path %}fill-icon{% endif %}" style="font-size:22px">leaderboard</span>
+            <span>Analytics</span>
+        </a>
+        <a href="/team/" class="bottom-nav-item {% if '/team/' in request.path %}active{% endif %}">
+            <span class="material-symbols-outlined {% if '/team/' in request.path %}fill-icon{% endif %}" style="font-size:22px">group</span>
+            <span>Team</span>
+        </a>
+        <button onclick="openMobileSidebar()" class="bottom-nav-item">
+            <span class="material-symbols-outlined" style="font-size:22px">menu</span>
+            <span>More</span>
+        </button>
+    </nav>
+
+    <!-- ══════════════════════════════════════
+         SHARED SCRIPTS
+    ══════════════════════════════════════ -->
+    <script>
+        // ── Mobile Sidebar ──────────────────────────────
+        function openMobileSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.add('open');
+            overlay.classList.remove('hidden');
+            overlay.style.opacity = '0';
+            requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+            document.body.style.overflow = 'hidden';
+        }
+        function closeMobileSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.remove('open');
+            overlay.style.opacity = '0';
+            setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+            document.body.style.overflow = '';
+        }
+
+        // ── Notification Panel ──────────────────────────
+        const NOTIF_ICONS = {
+            task_moved: { icon: 'swap_horiz',    color: 'text-primary',           bg: 'bg-primary-fixed' },
+            due_soon:   { icon: 'schedule',      color: 'text-on-error-container', bg: 'bg-error-container' },
+        };
+        let notifPanelOpen = false;
+        let profileMenuOpen = false;
+
+        function toggleNotifPanel() {
+            notifPanelOpen = !notifPanelOpen;
+            document.getElementById('notifPanel').classList.toggle('hidden', !notifPanelOpen);
+            if (notifPanelOpen) fetchNotifications();
+        }
+
+        function toggleProfileMenu() {
+            profileMenuOpen = !profileMenuOpen;
+            document.getElementById('profileMenu').classList.toggle('hidden', !profileMenuOpen);
+        }
+
+        document.addEventListener('click', e => {
+            if (notifPanelOpen && !document.getElementById('notifWrapper').contains(e.target)) {
+                notifPanelOpen = false;
+                document.getElementById('notifPanel').classList.add('hidden');
+            }
+            if (profileMenuOpen && !document.getElementById('profileWrapper').contains(e.target)) {
+                profileMenuOpen = false;
+                document.getElementById('profileMenu').classList.add('hidden');
+            }
+        });
+
+        function fetchNotifications() {
+            fetch('/notifications/')
+                .then(r => r.json())
+                .then(data => {
+                    renderNotifications(data.notifications);
+                    updateNotifBadge(data.unread);
+                })
+                .catch(() => {});
+        }
+
+        function renderNotifications(notifications) {
+            const list = document.getElementById('notifList');
+            if (!notifications.length) {
+                list.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-10 text-center px-4">
+                        <span class="material-symbols-outlined text-outline-variant text-4xl mb-3">notifications_off</span>
+                        <p class="text-sm font-semibold text-on-surface">All caught up!</p>
+                        <p class="text-xs text-secondary mt-1">No notifications yet.</p>
+                    </div>`;
+                return;
+            }
+            list.innerHTML = notifications.map(n => {
+                const meta = NOTIF_ICONS[n.type] || NOTIF_ICONS.task_moved;
+                return `
+                <div class="flex items-start gap-3 px-5 py-3.5 hover:bg-surface-container-low transition-colors ${!n.is_read ? 'bg-primary-fixed/30' : ''}">
+                    <div class="w-8 h-8 rounded-xl ${meta.bg} flex items-center justify-center shrink-0 mt-0.5">
+                        <span class="material-symbols-outlined ${meta.color}" style="font-size:16px">${meta.icon}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs text-on-surface leading-relaxed">${n.message}</p>
+                        <p class="text-[10px] text-secondary mt-1">${n.created_at}</p>
+                    </div>
+                    ${!n.is_read ? '<span class="w-2 h-2 rounded-full bg-primary shrink-0 mt-1.5 aura-dot"></span>' : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function updateNotifBadge(unread) {
+            const badge = document.getElementById('notifBadge');
+            const count = document.getElementById('unreadCount');
+            if (unread > 0) {
+                badge.classList.remove('hidden');
+                count.classList.remove('hidden');
+                count.textContent = unread;
+            } else {
+                badge.classList.add('hidden');
+                count.classList.add('hidden');
+            }
+        }
+
+        function markAllRead() {
+            fetch('/notifications/read/').then(() => {
+                updateNotifBadge(0);
+                fetchNotifications();
+            });
+        }
+
+        fetch('/notifications/')
+            .then(r => r.json())
+            .then(data => updateNotifBadge(data.unread))
+            .catch(() => {});
+
+        // ── Collapsible nav group ───────────────────────
+        function toggleNavGroup(btn) {
+            const sub = btn.nextElementSibling;
+            const chevron = btn.querySelector('.nav-chevron');
+            const isOpen = sub.classList.contains('open');
+            sub.classList.toggle('open', !isOpen);
+            chevron.classList.toggle('rotate-90', !isOpen);
+            btn.setAttribute('aria-expanded', !isOpen);
+        }
+
+        // Close sidebar on Escape
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeMobileSidebar();
+        });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- ── Schedule sidebar nav (dynamic) ── -->
+    <script>
+    (function () {
+        const TYPE_ICON = { work: 'work', study: 'school', teach: 'menu_book' };
+
+        function buildSchedNav(empty, items, prefix) {
+            if (!empty || !items) return;
+            fetch('/schedule/api/schedules/')
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    if (!data || !data.schedules) return;
+                    const list = data.schedules;
+                    if (!list.length) { empty.style.display = ''; items.innerHTML = ''; return; }
+                    empty.style.display = 'none';
+                    const currentId = new URLSearchParams(window.location.search).get('id');
+                    items.innerHTML = list.map((s, idx) => {
+                        const icon = TYPE_ICON[s.type] || 'calendar_month';
+                        const href = `/schedule/?id=${s.id}`;
+                        const isActive = window.location.pathname.startsWith('/schedule/') &&
+                                         (currentId ? currentId == s.id : idx === 0);
+                        return `<a href="${href}" draggable="false"
+                            class="nav-item nav-item--sub ${isActive ? 'active' : ''}"
+                            onclick="${prefix === 'mobile' ? 'closeMobileSidebar()' : ''}">
+                            <span class="material-symbols-outlined ${isActive ? 'fill-icon' : ''}" style="font-size:16px">${icon}</span>
+                            <span class="truncate max-w-[120px]">${s.name}</span>
+                        </a>`;
+                    }).join('');
+                    if (window.location.pathname.startsWith('/schedule/') && prefix === 'desktop') {
+                        const sub = document.getElementById('schedNavSub');
+                        const btn = sub?.previousElementSibling;
+                        if (sub && btn) {
+                            sub.classList.add('open');
+                            btn.querySelector('.nav-chevron')?.classList.add('rotate-90');
+                            btn.setAttribute('aria-expanded', 'true');
+                        }
+                    }
+                })
+                .catch(() => { empty.style.display = ''; });
+        }
+
+        // Desktop sidebar
+        buildSchedNav(
+            document.getElementById('schedNavEmpty'),
+            document.getElementById('schedNavItems'),
+            'desktop'
+        );
+        // Mobile sidebar
+        buildSchedNav(
+            document.getElementById('mobileSchedNavEmpty'),
+            document.getElementById('mobileSchedNavItems'),
+            'mobile'
+        );
+    })();
+    </script>
+</body>
+</html>

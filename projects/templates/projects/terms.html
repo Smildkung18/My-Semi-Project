@@ -1,0 +1,21 @@
+{% extends "projects/base_simple.html" %}
+
+{% block title %}Terms of Service — KanFlow{% endblock %}
+{% block page_label %}Terms of Service{% endblock %}
+
+{% block content %}
+<div>
+    <h1 class="text-3xl font-bold text-slate-800 mb-2">Terms of Service</h1>
+    <p class="text-sm text-slate-400">Last updated: March 2026</p>
+</div>
+
+{% for section in sections %}
+<div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+        <span class="w-6 h-6 rounded-lg bg-brand-50 text-brand-600 text-xs font-bold flex items-center justify-center shrink-0">{{ forloop.counter }}</span>
+        {{ section.title }}
+    </h2>
+    <p class="text-sm text-slate-600 leading-relaxed">{{ section.body }}</p>
+</div>
+{% endfor %}
+{% endblock %}

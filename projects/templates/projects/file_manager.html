@@ -1,0 +1,833 @@
+{% extends "projects/base.html" %}
+{% block title %}File Manager — KanFlow{% endblock %}
+{% block page_title %}File Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ── Dropdown ── */
+    .custom-dropdown { position: relative; display: inline-block; }
+    .dropdown-trigger {
+        display: flex; align-items: center; gap: .5rem;
+        padding: .5rem 1rem; border: 1px solid #e5e7eb; border-radius: .75rem;
+        background: white; cursor: pointer; transition: all .2s; min-width: 150px;
+        user-select: none; -webkit-user-select: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,.06);
+    }
+    .dropdown-trigger:hover { border-color: #d1d5db; }
+    .dropdown-menu {
+        position: absolute; top: 100%; left: 0; right: 0; margin-top: .5rem;
+        background: white; border: 1px solid #e5e7eb; border-radius: .75rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,.1); z-index: 1000;
+        display: none; max-height: 220px; overflow-y: auto; padding: .25rem 0;
+    }
+    .dropdown-menu.show { display: block; }
+    .dropdown-item {
+        display: flex; align-items: center; gap: .75rem;
+        padding: .65rem 1rem; font-size: .875rem; color: #374151;
+        cursor: pointer; transition: background .15s;
+        user-select: none; -webkit-user-select: none;
+    }
+    .dropdown-item:hover { background: #f3f4f6; color: #111827; }
+    .dropdown-item.selected { background: #eef2ff; color: #4f46e5; font-weight: 600; }
+
+    /* Modal Dropdown */
+    .modal-dropdown { position: relative; width: 100%; }
+    .modal-dropdown .dropdown-trigger { width: 100%; box-sizing: border-box; min-width: unset; box-shadow: none; }
+    .modal-floating-menu { position: fixed !important; z-index: 9999; margin-top: 0; }
+
+    label, button, .dropdown-trigger, .dropdown-item, .custom-dropdown, .modal-dropdown {
+        user-select: none; -webkit-user-select: none;
+    }
+
+    /* ── View Mode Toggle ── */
+    .view-btn { padding: .4rem .6rem; border-radius: .5rem; transition: all .15s; color: #6b7280; cursor: pointer; }
+    .view-btn:hover { background: #f3f4f6; color: #111827; }
+    .view-btn.active { background: #eef2ff; color: #4f46e5; }
+
+    /* ── File Card (Grid) ── */
+    .file-card {
+        background: white; border: 1px solid #e5e7eb; border-radius: 1.25rem;
+        padding: 1.25rem; cursor: pointer; transition: all .2s;
+        position: relative;
+    }
+    .file-card:hover { box-shadow: 0 8px 24px rgba(99,102,241,.12); border-color: #c7d2fe; transform: translateY(-2px); }
+
+    /* ── File Row (List/Details) ── */
+    .file-row {
+        display: flex; align-items: center; gap: .75rem;
+        padding: .75rem 1rem; border-bottom: 1px solid #f3f4f6;
+        cursor: pointer; transition: background .15s; border-radius: .75rem;
+    }
+    .file-row:hover { background: #f8fafc; }
+
+    /* ── Inline Rename Input ── */
+    .rename-input {
+        border: 1.5px solid #6366f1; border-radius: .5rem; padding: .25rem .5rem;
+        font-size: .875rem; outline: none; background: #eef2ff; width: 100%;
+        box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    }
+
+    /* ── File Preview Modal ── */
+    #filePreviewModal { backdrop-filter: blur(8px); }
+    #previewContent img, #previewContent video, #previewContent audio {
+        max-width: 100%; max-height: 70vh; border-radius: .75rem;
+    }
+
+    @keyframes gb-popup-scale-blur {
+        0%   { opacity: 0; transform-origin: 50% 50%; transform: scale(2, 2); filter: blur(90px); }
+        100% { opacity: 1; transform-origin: 50% 50%; transform: scale(1, 1); filter: blur(0px); }
+    }
+    .gb-popup-scale-blur {
+        animation: gb-popup-scale-blur 0.4s both;
+    }
+
+    @keyframes gb-popup-flip {
+        0%   { opacity: 0; transform: rotateX(-70deg); }
+        100% { opacity: 1; transform: rotateX(0deg); }
+    }
+    .gb-popup-flip {
+        animation: gb-popup-flip 0.3s both;
+        transform-style: preserve-3d;
+    }
+    .gb-popup-flip-wrapper {
+        perspective: 1300px;
+    }
+
+    /* ── Action buttons ── */
+    .action-btn {
+        padding: .35rem .6rem; border-radius: .5rem; font-size: .75rem;
+        transition: all .15s; display: inline-flex; align-items: center; gap: .25rem;
+        cursor: pointer; border: none; background: transparent;
+    }
+    .action-btn:hover { background: #f3f4f6; }
+    .action-btn.danger:hover { background: #fef2f2; color: #ef4444; }
+    .action-btn.primary:hover { background: #eef2ff; color: #4f46e5; }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<button onclick="showUploadModal()" class="flex items-center gap-2 bg-surface-container text-secondary hover:text-primary px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+    <span class="material-symbols-outlined" style="font-size:16px">upload_file</span>
+    Upload File
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="px-3 sm:px-6 lg:px-10 py-4 sm:py-8 max-w-6xl mx-auto">
+
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-xs text-secondary mb-4 uppercase tracking-widest font-bold">
+        <span>Workspace</span>
+        <span class="material-symbols-outlined" style="font-size:14px">chevron_right</span>
+        <span class="text-primary">Files</span>
+    </div>
+
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h2 class="font-headline font-extrabold text-4xl text-primary mb-1">File Manager</h2>
+        <p class="text-secondary">Manage and organize your project files with granular permissions.</p>
+    </div>
+
+    <!-- Toolbar: Filters + Search + View Toggle -->
+    <div class="flex gap-2 sm:gap-3 mb-4 sm:mb-6 flex-wrap items-center">
+        <!-- Project Filter -->
+        <div class="custom-dropdown">
+            <div class="dropdown-trigger" onclick="toggleDropdown('projectDropdown')">
+                <span class="material-symbols-outlined" style="font-size:18px">folder</span>
+                <span id="projectSelectedText">All Projects</span>
+                <span class="material-symbols-outlined" style="font-size:18px">expand_more</span>
+            </div>
+            <div id="projectDropdown" class="dropdown-menu">
+                <div class="dropdown-item" onclick="selectProject('','All Projects')">
+                    <span class="material-symbols-outlined" style="font-size:18px">apps</span><span>All Projects</span>
+                </div>
+                {% for project in projects %}
+                <div class="dropdown-item" data-value="{{ project.id }}" onclick="selectProject('{{ project.id }}','{{ project.name|escapejs }}')">
+                    <span class="material-symbols-outlined" style="font-size:18px">folder</span><span>{{ project.name }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Type Filter -->
+        <div class="custom-dropdown">
+            <div class="dropdown-trigger" onclick="toggleDropdown('typeDropdown')">
+                <span class="material-symbols-outlined" style="font-size:18px">category</span>
+                <span id="typeSelectedText">All Types</span>
+                <span class="material-symbols-outlined" style="font-size:18px">expand_more</span>
+            </div>
+            <div id="typeDropdown" class="dropdown-menu">
+                <div class="dropdown-item" onclick="selectType('','All Types')">
+                    <span class="material-symbols-outlined" style="font-size:18px">apps</span><span>All Types</span>
+                </div>
+                {% for type_choice in file_types %}
+                <div class="dropdown-item" data-value="{{ type_choice.0 }}" onclick="selectType('{{ type_choice.0 }}','{{ type_choice.1 }}')">
+                    <span class="material-symbols-outlined" style="font-size:18px">
+                        {% if type_choice.0 == 'document' %}description
+                        {% elif type_choice.0 == 'image' %}image
+                        {% elif type_choice.0 == 'video' %}video_file
+                        {% elif type_choice.0 == 'audio' %}audio_file
+                        {% elif type_choice.0 == 'archive' %}folder_zip
+                        {% else %}insert_drive_file{% endif %}
+                    </span>
+                    <span>{{ type_choice.1 }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Search -->
+        <input type="text" id="searchInput" placeholder="Search files..."
+            class="flex-1 min-w-[200px] px-4 py-2 border border-outline rounded-xl bg-surface-container-low text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary transition-all">
+
+        <!-- View Toggle -->
+        <div class="flex items-center gap-1 bg-surface-container-low border border-outline rounded-xl px-1 py-1 ml-auto">
+            <button class="view-btn active" id="viewBtnGrid" onclick="setView('grid')" title="Large icons">
+                <span class="material-symbols-outlined" style="font-size:18px">grid_view</span>
+            </button>
+            <button class="view-btn" id="viewBtnSmall" onclick="setView('small')" title="Small icons">
+                <span class="material-symbols-outlined" style="font-size:18px">apps</span>
+            </button>
+            <button class="view-btn" id="viewBtnList" onclick="setView('list')" title="List">
+                <span class="material-symbols-outlined" style="font-size:18px">view_list</span>
+            </button>
+            <button class="view-btn" id="viewBtnDetails" onclick="setView('details')" title="Details">
+                <span class="material-symbols-outlined" style="font-size:18px">table_rows</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ── FILE GRID (Large Icons) ── -->
+    <div id="viewGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4">
+        {% for file in files %}
+        <div class="file-card" data-file-id="{{ file.id }}" data-filename="{{ file.filename }}"
+            onclick="previewFile({{ file.id }}, '{{ file.filename|escapejs }}', '{{ file.file_type }}', '{{ file.file.url }}')">
+            <!-- Icon -->
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3
+                {% if file.file_type == 'document' %}bg-primary-container text-on-primary-container
+                {% elif file.file_type == 'image' %}bg-secondary-container text-on-secondary-container
+                {% elif file.file_type == 'video' %}bg-tertiary-container text-on-tertiary-container
+                {% elif file.file_type == 'audio' %}bg-surface-container text-on-surface-variant
+                {% elif file.file_type == 'archive' %}bg-error-container text-on-error-container
+                {% else %}bg-surface-variant text-on-surface-variant{% endif %}">
+                <span class="material-symbols-outlined" style="font-size:20px">
+                    {% if file.file_type == 'document' %}description
+                    {% elif file.file_type == 'image' %}image
+                    {% elif file.file_type == 'video' %}video_file
+                    {% elif file.file_type == 'audio' %}audio_file
+                    {% elif file.file_type == 'archive' %}folder_zip
+                    {% else %}insert_drive_file{% endif %}
+                </span>
+            </div>
+            <!-- Name (editable inline) -->
+            <div class="font-semibold text-on-surface text-sm mb-1 truncate file-name-display"
+                title="{{ file.filename }}" id="fname-grid-{{ file.id }}">{{ file.filename }}</div>
+            <div class="text-xs text-secondary mb-3">{{ file.get_file_size_display }}</div>
+            <!-- Actions -->
+            <div class="flex gap-1 flex-wrap" onclick="event.stopPropagation()">
+                {% if file.perm_download %}
+                <button class="action-btn primary" onclick="downloadFile({{ file.id }}, '{{ file.filename|escapejs }}')" title="ดาวน์โหลด">
+                    <span class="material-symbols-outlined" style="font-size:14px">download</span>
+                </button>
+                {% endif %}
+                {% if file.perm_edit %}
+                <button class="action-btn primary" onclick="startRename({{ file.id }}, 'grid')" title="เปลี่ยนชื่อ">
+                    <span class="material-symbols-outlined" style="font-size:14px">edit</span>
+                </button>
+                {% endif %}
+                {% if file.perm_delete %}
+                <button class="action-btn danger" onclick="deleteFile({{ file.id }})" title="ลบ">
+                    <span class="material-symbols-outlined" style="font-size:14px">delete</span>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-16">
+            <span class="material-symbols-outlined text-6xl text-secondary mb-4">folder_open</span>
+            <h3 class="text-xl font-semibold text-primary mb-2">No files yet</h3>
+            <p class="text-secondary mb-6">Upload your first file to get started</p>
+            <button onclick="showUploadModal()" class="bg-primary text-on-primary px-6 py-2.5 rounded-xl font-semibold hover:opacity-90 transition-opacity">Upload File</button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ── FILE SMALL ICONS ── -->
+    <div id="viewSmall" class="hidden grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9 xl:grid-cols-11 gap-2 sm:gap-3">
+        {% for file in files %}
+        <div class="flex flex-col items-center gap-1 p-3 rounded-xl cursor-pointer hover:bg-surface-container transition-all group"
+            onclick="previewFile({{ file.id }}, '{{ file.filename|escapejs }}', '{{ file.file_type }}', '{{ file.file.url }}')">
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center
+                {% if file.file_type == 'document' %}bg-primary-container text-on-primary-container
+                {% elif file.file_type == 'image' %}bg-secondary-container text-on-secondary-container
+                {% elif file.file_type == 'video' %}bg-tertiary-container text-on-tertiary-container
+                {% elif file.file_type == 'audio' %}bg-surface-container text-on-surface-variant
+                {% elif file.file_type == 'archive' %}bg-error-container text-on-error-container
+                {% else %}bg-surface-variant text-on-surface-variant{% endif %}">
+                <span class="material-symbols-outlined" style="font-size:18px">
+                    {% if file.file_type == 'document' %}description{% elif file.file_type == 'image' %}image{% elif file.file_type == 'video' %}video_file{% elif file.file_type == 'audio' %}audio_file{% elif file.file_type == 'archive' %}folder_zip{% else %}insert_drive_file{% endif %}
+                </span>
+            </div>
+            <span class="text-[11px] text-center text-on-surface truncate w-full text-center" id="fname-small-{{ file.id }}" title="{{ file.filename }}">{{ file.filename }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ── FILE LIST ── -->
+    <div id="viewList" class="hidden space-y-0.5">
+        {% for file in files %}
+        <div class="file-row" onclick="previewFile({{ file.id }}, '{{ file.filename|escapejs }}', '{{ file.file_type }}', '{{ file.file.url }}')">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0
+                {% if file.file_type == 'document' %}bg-primary-container text-on-primary-container
+                {% elif file.file_type == 'image' %}bg-secondary-container text-on-secondary-container
+                {% elif file.file_type == 'video' %}bg-tertiary-container text-on-tertiary-container
+                {% elif file.file_type == 'audio' %}bg-surface-container text-on-surface-variant
+                {% elif file.file_type == 'archive' %}bg-error-container text-on-error-container
+                {% else %}bg-surface-variant text-on-surface-variant{% endif %}">
+                <span class="material-symbols-outlined" style="font-size:16px">
+                    {% if file.file_type == 'document' %}description{% elif file.file_type == 'image' %}image{% elif file.file_type == 'video' %}video_file{% elif file.file_type == 'audio' %}audio_file{% elif file.file_type == 'archive' %}folder_zip{% else %}insert_drive_file{% endif %}
+                </span>
+            </div>
+            <span class="flex-1 text-sm font-medium text-on-surface truncate" id="fname-list-{{ file.id }}">{{ file.filename }}</span>
+            <div class="flex items-center gap-1 ml-auto" onclick="event.stopPropagation()">
+                {% if file.perm_download %}
+                <button class="action-btn primary" onclick="downloadFile({{ file.id }}, '{{ file.filename|escapejs }}')" title="ดาวน์โหลด">
+                    <span class="material-symbols-outlined" style="font-size:14px">download</span>
+                </button>
+                {% endif %}
+                {% if file.perm_edit %}
+                <button class="action-btn primary" onclick="startRename({{ file.id }}, 'list')" title="เปลี่ยนชื่อ">
+                    <span class="material-symbols-outlined" style="font-size:14px">edit</span>
+                </button>
+                {% endif %}
+                {% if file.perm_delete %}
+                <button class="action-btn danger" onclick="deleteFile({{ file.id }})" title="ลบ">
+                    <span class="material-symbols-outlined" style="font-size:14px">delete</span>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ── FILE DETAILS (Table) ── -->
+    <div id="viewDetails" class="hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-outline text-xs text-secondary uppercase tracking-wider">
+                    <th class="text-left py-3 px-3 font-semibold">Name</th>
+                    <th class="text-left py-3 px-3 font-semibold hidden sm:table-cell">Type</th>
+                    <th class="text-left py-3 px-3 font-semibold hidden md:table-cell">Size</th>
+                    <th class="text-left py-3 px-3 font-semibold hidden lg:table-cell">Project</th>
+                    <th class="text-left py-3 px-3 font-semibold hidden lg:table-cell">Uploaded</th>
+                    <th class="text-right py-3 px-3 font-semibold">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for file in files %}
+                <tr class="border-b border-surface-container-highest hover:bg-surface-container-low transition-colors cursor-pointer"
+                    onclick="previewFile({{ file.id }}, '{{ file.filename|escapejs }}', '{{ file.file_type }}', '{{ file.file.url }}')">
+                    <td class="py-3 px-3">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-secondary" style="font-size:16px">
+                                {% if file.file_type == 'document' %}description{% elif file.file_type == 'image' %}image{% elif file.file_type == 'video' %}video_file{% elif file.file_type == 'audio' %}audio_file{% elif file.file_type == 'archive' %}folder_zip{% else %}insert_drive_file{% endif %}
+                            </span>
+                            <span class="font-medium text-on-surface truncate max-w-[200px]" id="fname-details-{{ file.id }}">{{ file.filename }}</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-3 text-secondary hidden sm:table-cell capitalize">{{ file.file_type }}</td>
+                    <td class="py-3 px-3 text-secondary hidden md:table-cell">{{ file.get_file_size_display }}</td>
+                    <td class="py-3 px-3 text-secondary hidden lg:table-cell">{{ file.project.name }}</td>
+                    <td class="py-3 px-3 text-secondary hidden lg:table-cell">{{ file.created_at|date:"d M Y" }}</td>
+                    <td class="py-3 px-3" onclick="event.stopPropagation()">
+                        <div class="flex items-center gap-1 justify-end">
+                            {% if file.perm_download %}
+                            <button class="action-btn primary" onclick="downloadFile({{ file.id }}, '{{ file.filename|escapejs }}')" title="ดาวน์โหลด">
+                                <span class="material-symbols-outlined" style="font-size:14px">download</span>
+                            </button>
+                            {% endif %}
+                            {% if file.perm_edit %}
+                            <button class="action-btn primary" onclick="startRename({{ file.id }}, 'details')" title="เปลี่ยนชื่อ">
+                                <span class="material-symbols-outlined" style="font-size:14px">edit</span>
+                            </button>
+                            {% endif %}
+                            {% if file.perm_delete %}
+                            <button class="action-btn danger" onclick="deleteFile({{ file.id }})" title="ลบ">
+                                <span class="material-symbols-outlined" style="font-size:14px">delete</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if not files %}
+        <div class="text-center py-16 text-secondary">No files found.</div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ══ File Preview Modal ══ -->
+<div id="filePreviewModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="closePreview(event)">
+    <div class="bg-surface-container-low rounded-3xl shadow-float w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col gb-popup-scale-blur" onclick="event.stopPropagation()">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-surface-container-highest">
+            <div class="flex items-center gap-3 min-w-0">
+                <span class="material-symbols-outlined text-primary" id="previewIcon" style="font-size:20px">insert_drive_file</span>
+                <span class="font-semibold text-on-surface truncate" id="previewFilename">filename</span>
+            </div>
+            <button onclick="document.getElementById('filePreviewModal').classList.add('hidden')"
+                class="text-secondary hover:text-primary transition-colors ml-3 shrink-0">
+                <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+        </div>
+        <!-- Content -->
+        <div id="previewContent" class="flex-1 overflow-auto p-6 flex items-center justify-center min-h-[200px]">
+            <p class="text-secondary text-sm">Loading...</p>
+        </div>
+        <!-- Footer -->
+        <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-container-highest">
+            <a id="previewOpenBtn" href="#" target="_blank" rel="noopener noreferrer"
+                class="hidden items-center gap-2 bg-surface-container text-on-surface px-4 py-2 rounded-xl text-sm font-semibold hover:bg-surface-container-high transition-colors">
+                <span class="material-symbols-outlined" style="font-size:16px">open_in_new</span>เปิดเอกสาร
+            </a>
+            <button id="previewDownloadBtn" onclick="downloadFile(_previewFileId, _previewFilename)"
+                class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+                <span class="material-symbols-outlined" style="font-size:16px">download</span>ดาวน์โหลด
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Rename Modal ══ -->
+<div id="renameModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 gb-popup-flip-wrapper" onclick="closeRenameModal(event)">
+    <div class="bg-surface-container-low rounded-3xl shadow-float w-full max-w-sm p-6 gb-popup-flip" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-on-surface">เปลี่ยนชื่อไฟล์</h3>
+            <button onclick="document.getElementById('renameModal').classList.add('hidden')"
+                class="text-secondary hover:text-primary transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="flex items-center gap-2 mb-4">
+            <input type="text" id="renameInput"
+                class="flex-1 px-4 py-2.5 border border-outline rounded-xl bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                placeholder="ชื่อไฟล์ใหม่"
+                onkeydown="if(event.key==='Enter') confirmRename(); if(event.key==='Escape') document.getElementById('renameModal').classList.add('hidden')">
+            <span id="renameExt" class="text-secondary text-sm font-medium shrink-0"></span>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="confirmRename()" class="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-semibold hover:opacity-90 transition-opacity">ตกลง</button>
+            <button onclick="document.getElementById('renameModal').classList.add('hidden')" class="flex-1 bg-surface-container text-on-surface-variant py-2.5 rounded-xl font-semibold hover:bg-surface-container-high transition-colors">ยกเลิก</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Confirm Delete Modal ══ -->
+<div id="confirmDeleteModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 gb-popup-flip-wrapper" onclick="if(event.target===this) closeConfirmDelete()">
+    <div class="bg-surface-container-low rounded-3xl shadow-float w-full max-w-sm p-6 gb-popup-flip" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-xl bg-error-container flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-error">delete</span>
+            </div>
+            <div>
+                <h3 class="font-semibold text-on-surface">ลบไฟล์</h3>
+                <p class="text-sm text-secondary">ต้องการลบไฟล์นี้หรือไม่?</p>
+            </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+            <button onclick="confirmDeleteFile()" class="flex-1 bg-error text-on-error py-2.5 rounded-xl font-semibold hover:opacity-90 transition-opacity">ลบ</button>
+            <button onclick="closeConfirmDelete()" class="flex-1 bg-surface-container text-on-surface-variant py-2.5 rounded-xl font-semibold hover:bg-surface-container-high transition-colors">ยกเลิก</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ Upload Modal ══ -->
+<div id="uploadModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm hidden" onclick="closeUploadModalOnOverlay(event)">
+    <div class="bg-surface-container-low rounded-2xl sm:rounded-3xl p-4 sm:p-8 max-w-lg w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto shadow-float" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-semibold text-on-surface">Upload File</h3>
+            <button onclick="closeUploadModal()" class="text-secondary hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+        </div>
+        <form id="uploadForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-on-surface mb-2">Select File</label>
+                <input type="file" name="file" id="fileInput" class="w-full px-4 py-2 border border-outline rounded-xl bg-surface-container-low text-on-surface focus:outline-none focus:ring-2 focus:ring-primary transition-all" required>
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-on-surface mb-2">Project</label>
+                <input type="hidden" name="project_id" id="project" required>
+                <div class="modal-dropdown custom-dropdown">
+                    <div class="dropdown-trigger" onclick="toggleModalDropdown('modalProjectTrigger','modalProjectDropdown')" id="modalProjectTrigger">
+                        <span class="material-symbols-outlined" style="font-size:18px">folder</span>
+                        <span id="modalProjectSelectedText" style="flex:1;color:#9ca3af">Select Project</span>
+                        <span class="material-symbols-outlined" style="font-size:18px">expand_more</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-on-surface mb-2">Task (Optional)</label>
+                <input type="hidden" name="task_id" id="task">
+                <div class="modal-dropdown custom-dropdown">
+                    <div class="dropdown-trigger" onclick="toggleModalDropdown('modalTaskTrigger','modalTaskDropdown')" id="modalTaskTrigger">
+                        <span class="material-symbols-outlined" style="font-size:18px">task_alt</span>
+                        <span id="modalTaskSelectedText" style="flex:1;color:#9ca3af">No Task</span>
+                        <span class="material-symbols-outlined" style="font-size:18px">expand_more</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="flex-1 bg-primary text-on-primary px-4 py-2.5 rounded-xl font-semibold hover:opacity-90 transition-opacity">Upload</button>
+                <button type="button" onclick="closeUploadModal()" class="flex-1 bg-surface-container text-on-surface-variant px-4 py-2.5 rounded-xl font-semibold hover:bg-surface-container-high transition-colors">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Portal Dropdowns -->
+<div id="modalProjectDropdown" class="modal-floating-menu dropdown-menu">
+    {% for project in projects %}
+    <div class="dropdown-item" onclick="selectModalProject('{{ project.id }}','{{ project.name|escapejs }}')">
+        <span class="material-symbols-outlined" style="font-size:18px">folder</span>
+        <span>{{ project.name }}</span>
+    </div>
+    {% endfor %}
+</div>
+<div id="modalTaskDropdown" class="modal-floating-menu dropdown-menu">
+    <div class="dropdown-item" onclick="selectModalTask('','No Task')">
+        <span class="material-symbols-outlined" style="font-size:18px">remove_circle_outline</span>
+        <span>No Task</span>
+    </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────
+let currentProjectFilter = '';
+let currentTypeFilter    = '';
+let currentView          = localStorage.getItem('fmView') || 'grid';
+let _renameFileId        = null;
+let _previewFileId       = null;
+let _previewFilename     = '';
+
+const ICON_MAP = {
+    document: 'description', image: 'image', video: 'video_file',
+    audio: 'audio_file', archive: 'folder_zip', other: 'insert_drive_file',
+};
+
+// ── Init ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    // Restore filters from URL
+    const p = new URLSearchParams(window.location.search);
+    const proj  = p.get('project') || '';
+    const type  = p.get('type')    || '';
+    const search = p.get('search') || '';
+
+    currentProjectFilter = proj;
+    currentTypeFilter    = type;
+    document.getElementById('searchInput').value = search;
+
+    // Restore dropdown labels from DOM options
+    if (proj) {
+        const el = document.querySelector(`#projectDropdown [data-value="${proj}"]`);
+        if (el) document.getElementById('projectSelectedText').textContent = el.querySelector('span:last-child').textContent;
+    }
+    if (type) {
+        const el = document.querySelector(`#typeDropdown [data-value="${type}"]`);
+        if (el) document.getElementById('typeSelectedText').textContent = el.querySelector('span:last-child').textContent;
+    }
+
+    // Search on type (debounced)
+    let searchTimer;
+    document.getElementById('searchInput').addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(applyFilters, 400);
+    });
+
+    setView(currentView, false);
+});
+
+// ── View Toggle ───────────────────────────────────────────
+function setView(mode, save = true) {
+    currentView = mode;
+    if (save) localStorage.setItem('fmView', mode);
+    ['grid','small','list','details'].forEach(v => {
+        document.getElementById('viewBtn' + v.charAt(0).toUpperCase() + v.slice(1))?.classList.toggle('active', v === mode);
+        document.getElementById('view' + v.charAt(0).toUpperCase() + v.slice(1))?.classList.toggle('hidden', v !== mode);
+    });
+}
+
+// ── Dropdown ──────────────────────────────────────────────
+function toggleDropdown(id) {
+    const menu = document.getElementById(id);
+    const isOpen = menu.classList.contains('show');
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+    if (!isOpen) menu.classList.add('show');
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.custom-dropdown') && !e.target.closest('.modal-floating-menu'))
+        document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+});
+
+function selectProject(value, label) {
+    currentProjectFilter = value;
+    document.getElementById('projectSelectedText').textContent = label;
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+    applyFilters();
+}
+
+function selectType(value, label) {
+    currentTypeFilter = value;
+    document.getElementById('typeSelectedText').textContent = label;
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+    applyFilters();
+}
+
+function applyFilters() {
+    const params = new URLSearchParams();
+    if (currentProjectFilter) params.append('project', currentProjectFilter);
+    if (currentTypeFilter)    params.append('type',    currentTypeFilter);
+    const search = document.getElementById('searchInput').value.trim();
+    if (search) params.append('search', search);
+    window.location.href = `/files/${params.toString() ? '?' + params.toString() : ''}`;
+}
+
+// ── File Preview Modal ────────────────────────────────────
+function previewFile(fileId, filename, fileType, fileUrl) {
+    _previewFileId = fileId;
+    _previewFilename = filename;
+    document.getElementById('previewFilename').textContent = filename;
+    document.getElementById('previewIcon').textContent = ICON_MAP[fileType] || 'insert_drive_file';
+    const content = document.getElementById('previewContent');
+
+    if (fileType === 'image') {
+        content.innerHTML = `<img src="${fileUrl}" alt="${filename}" class="max-w-full max-h-[65vh] rounded-xl object-contain">`;
+    } else if (fileType === 'video') {
+        content.innerHTML = `<video src="${fileUrl}" controls class="max-w-full max-h-[65vh] rounded-xl"></video>`;
+    } else if (fileType === 'audio') {
+        content.innerHTML = `<div class="text-center"><span class="material-symbols-outlined text-6xl text-secondary mb-4">audio_file</span><br><audio src="${fileUrl}" controls class="mt-4 w-full"></audio></div>`;
+    } else {
+        content.innerHTML = `
+            <div class="text-center py-8">
+                <span class="material-symbols-outlined text-6xl text-secondary mb-4">${ICON_MAP[fileType] || 'insert_drive_file'}</span>
+                <p class="text-on-surface font-semibold mb-1">${filename}</p>
+                <p class="text-secondary text-sm mb-4">ไม่สามารถแสดงตัวอย่างได้ กรุณาดาวน์โหลดเพื่อเปิดไฟล์</p>
+            </div>`;
+    }
+    document.getElementById('filePreviewModal').classList.remove('hidden');
+
+    const openBtn = document.getElementById('previewOpenBtn');
+    if (fileType === 'document') {
+        openBtn.href = fileUrl;
+        openBtn.classList.remove('hidden');
+        openBtn.classList.add('flex');
+    } else {
+        openBtn.classList.add('hidden');
+        openBtn.classList.remove('flex');
+    }
+}
+
+function closePreview(e) {
+    if (e.target === document.getElementById('filePreviewModal'))
+        document.getElementById('filePreviewModal').classList.add('hidden');
+}
+
+// ── Download ──────────────────────────────────────────────
+function downloadFile(fileId, filename) {
+    const a = document.createElement('a');
+    a.href = `/files/${fileId}/download/`;
+    a.download = filename || '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+// ── Rename (in-app modal) ─────────────────────────────────
+function splitFilename(filename) {
+    const dot = filename.lastIndexOf('.');
+    if (dot === -1) return { name: filename, ext: '' };
+    return { name: filename.slice(0, dot), ext: filename.slice(dot) };
+}
+
+function startRename(fileId, viewMode) {
+    _renameFileId = fileId;
+    const el = document.getElementById(`fname-${viewMode}-${fileId}`) ||
+               document.getElementById(`fname-grid-${fileId}`);
+    const fullName = el ? el.textContent.trim() : '';
+    const { name, ext } = splitFilename(fullName);
+    document.getElementById('renameInput').value = name;
+    document.getElementById('renameExt').textContent = ext;
+    document.getElementById('renameModal').classList.remove('hidden');
+    setTimeout(() => {
+        const inp = document.getElementById('renameInput');
+        inp.focus(); inp.select();
+    }, 50);
+}
+
+function closeRenameModal(e) {
+    if (e.target === document.getElementById('renameModal'))
+        document.getElementById('renameModal').classList.add('hidden');
+}
+
+function confirmRename() {
+    const newName = document.getElementById('renameInput').value.trim();
+    if (!newName) return;
+    const ext = document.getElementById('renameExt').textContent;
+    const fullName = newName + ext;
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    fetch(`/files/${_renameFileId}/rename/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf },
+        body: `filename=${encodeURIComponent(fullName)}`,
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            ['grid','small','list','details'].forEach(v => {
+                const el = document.getElementById(`fname-${v}-${_renameFileId}`);
+                if (el) el.textContent = data.filename;
+            });
+            document.getElementById('renameModal').classList.add('hidden');
+        } else {
+            alert(data.error || 'ไม่สามารถเปลี่ยนชื่อได้');
+        }
+    })
+    .catch(() => alert('ไม่สามารถเปลี่ยนชื่อได้'));
+}
+
+// ── Delete ────────────────────────────────────────────────
+let _deleteFileId = null;
+
+function deleteFile(fileId) {
+    _deleteFileId = fileId;
+    document.getElementById('confirmDeleteModal').classList.remove('hidden');
+}
+
+function closeConfirmDelete() {
+    document.getElementById('confirmDeleteModal').classList.add('hidden');
+    _deleteFileId = null;
+}
+
+function confirmDeleteFile() {
+    if (!_deleteFileId) return;
+    const fileId = _deleteFileId;
+    closeConfirmDelete();
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    fetch(`/files/${fileId}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelectorAll(`[data-file-id="${fileId}"]`).forEach(el => el.remove());
+            ['grid','small','list','details'].forEach(v => {
+                const nameEl = document.getElementById(`fname-${v}-${fileId}`);
+                if (nameEl) nameEl.closest('tr, .file-row, [class*="flex-col"]')?.remove();
+            });
+        } else {
+            alert(data.error || 'ไม่สามารถลบไฟล์ได้');
+        }
+    })
+    .catch(() => alert('ไม่สามารถลบไฟล์ได้'));
+}
+
+// ── Upload Modal ──────────────────────────────────────────
+function showUploadModal() {
+    document.getElementById('uploadModal').classList.remove('hidden');
+    document.getElementById('uploadModal').classList.add('flex');
+}
+function closeUploadModal() {
+    closeAllModalDropdowns();
+    document.getElementById('uploadModal').classList.add('hidden');
+    document.getElementById('uploadModal').classList.remove('flex');
+    document.getElementById('uploadForm').reset();
+    document.getElementById('project').value = '';
+    document.getElementById('modalProjectSelectedText').textContent = 'Select Project';
+    document.getElementById('modalProjectSelectedText').style.color = '#9ca3af';
+    document.getElementById('task').value = '';
+    document.getElementById('modalTaskSelectedText').textContent = 'No Task';
+    document.getElementById('modalTaskSelectedText').style.color = '#9ca3af';
+    document.getElementById('modalTaskDropdown').innerHTML = `
+        <div class="dropdown-item" onclick="selectModalTask('','No Task')">
+            <span class="material-symbols-outlined" style="font-size:18px">remove_circle_outline</span>
+            <span>No Task</span>
+        </div>`;
+}
+function closeUploadModalOnOverlay(e) {
+    if (e.target === e.currentTarget) closeUploadModal();
+}
+
+// ── Modal Portal Dropdowns ────────────────────────────────
+const MODAL_DROPDOWNS = [
+    { triggerId: 'modalProjectTrigger', menuId: 'modalProjectDropdown' },
+    { triggerId: 'modalTaskTrigger',    menuId: 'modalTaskDropdown'    },
+];
+
+function toggleModalDropdown(triggerId, menuId) {
+    const trigger = document.getElementById(triggerId);
+    const menu    = document.getElementById(menuId);
+    const isOpen  = menu.classList.contains('show');
+    closeAllModalDropdowns();
+    if (!isOpen) {
+        const wrapper = trigger.closest('.mb-6');
+        const label   = wrapper ? wrapper.querySelector('label') : null;
+        const anchor  = label || trigger;
+        const rect    = anchor.getBoundingClientRect();
+        const tRect   = trigger.getBoundingClientRect();
+        menu.style.top   = (rect.bottom + 4) + 'px';
+        menu.style.left  = tRect.left + 'px';
+        menu.style.width = tRect.width + 'px';
+        menu.classList.add('show');
+    }
+}
+function closeAllModalDropdowns() {
+    MODAL_DROPDOWNS.forEach(({ menuId }) => document.getElementById(menuId).classList.remove('show'));
+}
+document.addEventListener('click', e => {
+    const insidePortal  = e.target.closest('.modal-floating-menu');
+    const insideTrigger = MODAL_DROPDOWNS.some(({ triggerId }) => document.getElementById(triggerId).contains(e.target));
+    if (!insidePortal && !insideTrigger) closeAllModalDropdowns();
+});
+
+function selectModalProject(value, label) {
+    document.getElementById('project').value = value;
+    const el = document.getElementById('modalProjectSelectedText');
+    el.textContent = label.trim(); el.style.color = '';
+    closeAllModalDropdowns();
+    onProjectChange.call({ value });
+}
+function selectModalTask(value, label) {
+    document.getElementById('task').value = value;
+    const el = document.getElementById('modalTaskSelectedText');
+    el.textContent = label.trim(); el.style.color = value ? '' : '#9ca3af';
+    closeAllModalDropdowns();
+}
+function onProjectChange() {
+    const projectId = typeof this.value !== 'undefined' ? this.value : document.getElementById('project').value;
+    const taskDropdown = document.getElementById('modalTaskDropdown');
+    taskDropdown.innerHTML = `<div class="dropdown-item" onclick="selectModalTask('','No Task')">
+        <span class="material-symbols-outlined" style="font-size:18px">remove_circle_outline</span><span>No Task</span></div>`;
+    document.getElementById('task').value = '';
+    document.getElementById('modalTaskSelectedText').textContent = 'No Task';
+    document.getElementById('modalTaskSelectedText').style.color = '#9ca3af';
+    if (!projectId) return;
+    fetch(`/ajax/tasks/?project_id=${projectId}`, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.json())
+        .then(tasks => {
+            tasks.forEach(task => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px">task_alt</span><span>${task.name}</span>`;
+                item.onclick = () => selectModalTask(task.id, task.name);
+                taskDropdown.appendChild(item);
+            });
+        });
+}
+</script>
+{% endblock %}

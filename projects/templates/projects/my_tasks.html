@@ -1,0 +1,155 @@
+{% extends "projects/base.html" %}
+{% block title %}My Tasks — KanFlow{% endblock %}
+{% block page_title %}My Tasks{% endblock %}
+
+{% block extra_head %}
+<style>
+    .task-row { transition: all 0.15s ease; border-bottom: 1px solid #eceef0; }
+    .task-row:last-child { border-bottom: none; }
+    .task-row:hover { background: #f7f9fb; }
+    .status-chip { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:4px 10px; border-radius:9999px; text-transform:uppercase; letter-spacing:0.04em; }
+    .chip-todo    { background:#eceef0; color:#474651; }
+    .chip-doing   { background:#e2dfff; color:#3e3c8f; }
+    .chip-done    { background:rgba(78,222,163,0.15); color:#005236; }
+    .chip-overdue { background:#ffdad6; color:#93000a; }
+    .tab-btn { transition: all 0.15s ease; border-bottom: 2px solid transparent; padding-bottom: 12px; }
+    .tab-btn.active { color: #1a146b; border-bottom-color: #1a146b; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<div class="relative hidden sm:block">
+    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary" style="font-size:16px">search</span>
+    <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="filterTasks(this.value)"
+        class="pl-9 pr-4 py-2 bg-surface-container border-none rounded-xl text-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary/15 w-52 focus:w-64 focus:bg-surface-container-lowest transition-all">
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="px-3 sm:px-6 lg:px-10 py-4 sm:py-8 max-w-5xl mx-auto">
+
+    <div class="mb-8">
+        <h2 class="font-headline font-extrabold text-3xl text-primary mb-1">My Tasks</h2>
+        <p class="text-secondary text-sm">Manage your workflows and daily objectives.</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-8">
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <p class="text-[10px] font-black text-secondary uppercase tracking-widest mb-3">Current Week</p>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-primary-fixed flex items-center justify-center">
+                    <span class="material-symbols-outlined text-on-primary-fixed-variant fill-icon">task_alt</span>
+                </div>
+                <div>
+                    <p class="font-headline font-extrabold text-3xl text-primary">{{ tasks|length }}</p>
+                    <p class="text-xs text-secondary font-semibold">Total Tasks</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card border-t-2 border-primary">
+            <p class="text-[10px] font-black text-primary uppercase tracking-widest mb-3">Active</p>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-secondary-container flex items-center justify-center">
+                    <span class="material-symbols-outlined text-on-secondary-container fill-icon">pending_actions</span>
+                </div>
+                <div>
+                    <p class="font-headline font-extrabold text-3xl text-primary">{{ doing_count }}</p>
+                    <p class="text-xs text-secondary font-semibold">In Progress</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <p class="text-[10px] font-black text-on-tertiary-container uppercase tracking-widest mb-3">Completed</p>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-tertiary-fixed/20 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-on-tertiary-container fill-icon">check_circle</span>
+                </div>
+                <div>
+                    <p class="font-headline font-extrabold text-3xl text-primary">{{ done_count }}</p>
+                    <p class="text-xs text-secondary font-semibold">Done & Archived</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <p class="text-[10px] font-black text-error uppercase tracking-widest mb-3">Critical</p>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-error-container flex items-center justify-center">
+                    <span class="material-symbols-outlined text-on-error-container fill-icon">warning</span>
+                </div>
+                <div>
+                    <p class="font-headline font-extrabold text-3xl text-primary">{{ overdue_count }}</p>
+                    <p class="text-xs text-secondary font-semibold">Overdue Items</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex items-center gap-1 border-b border-surface-container-high mb-5">
+        <button onclick="filterStatus('all')" id="tab-all" class="tab-btn active text-sm font-semibold text-primary px-4 py-3">All Tasks</button>
+        <button onclick="filterStatus('todo')" id="tab-todo" class="tab-btn text-sm font-semibold text-secondary px-4 py-3">To Do</button>
+        <button onclick="filterStatus('doing')" id="tab-doing" class="tab-btn text-sm font-semibold text-secondary px-4 py-3">Doing</button>
+        <button onclick="filterStatus('done')" id="tab-done" class="tab-btn text-sm font-semibold text-secondary px-4 py-3">Done</button>
+    </div>
+
+    <!-- Task List -->
+    <div class="bg-surface-container-lowest rounded-3xl shadow-card overflow-hidden">
+        {% for task in tasks %}
+        <div class="task-row flex items-center gap-2 sm:gap-4 px-3 sm:px-6 py-3 sm:py-4 group" data-status="{{ task.status }}" data-title="{{ task.title|lower }}">
+            <div class="shrink-0">
+                {% if task.status == 'done' %}
+                <div class="w-6 h-6 rounded-full bg-on-tertiary-container flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white fill-icon" style="font-size:14px">check</span>
+                </div>
+                {% else %}
+                <div class="w-6 h-6 rounded-full border-2 border-outline-variant group-hover:border-primary transition-colors"></div>
+                {% endif %}
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-on-surface truncate {% if task.status == 'done' %}line-through text-secondary{% endif %}">{{ task.title }}</p>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                    <span class="material-symbols-outlined text-secondary" style="font-size:12px">label</span>
+                    <span class="text-xs text-secondary">{{ task.project.name }}</span>
+                </div>
+            </div>
+            <span class="status-chip shrink-0 {% if task.is_overdue %}chip-overdue{% elif task.status == 'todo' %}chip-todo{% elif task.status == 'doing' %}chip-doing{% else %}chip-done{% endif %}">
+                <span class="w-1.5 h-1.5 rounded-full {% if task.is_overdue %}bg-error{% elif task.status == 'todo' %}bg-outline{% elif task.status == 'doing' %}bg-primary{% else %}bg-on-tertiary-container{% endif %}"></span>
+                {% if task.is_overdue %}Overdue{% elif task.status == 'todo' %}To Do{% elif task.status == 'doing' %}In Progress{% else %}Done{% endif %}
+            </span>
+            <div class="shrink-0 hidden xs:flex items-center gap-1.5 text-xs {% if task.is_overdue %}text-error font-bold{% else %}text-secondary{% endif %}">
+                <span class="material-symbols-outlined" style="font-size:14px">calendar_today</span>
+                <span>{% if task.due_date %}{{ task.due_date|date:"M d, Y" }}{% else %}—{% endif %}</span>
+            </div>
+            <a href="/project/{{ task.project.id }}/"
+                class="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 rounded-xl hover:bg-primary-fixed flex items-center justify-center text-secondary hover:text-primary">
+                <span class="material-symbols-outlined" style="font-size:16px">open_in_new</span>
+            </a>
+        </div>
+        {% empty %}
+        <div class="flex flex-col items-center justify-center py-20 text-center">
+            <div class="w-16 h-16 rounded-4xl bg-primary-fixed flex items-center justify-center mb-4">
+                <span class="material-symbols-outlined text-primary" style="font-size:32px">assignment_turned_in</span>
+            </div>
+            <p class="font-headline font-bold text-lg text-primary mb-1">All caught up!</p>
+            <p class="text-secondary text-sm">No tasks assigned to you yet.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function filterTasks(q) {
+        q = q.toLowerCase().trim();
+        document.querySelectorAll('.task-row').forEach(r => { r.style.display = (!q || r.dataset.title.includes(q)) ? '' : 'none'; });
+    }
+    function filterStatus(status) {
+        document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active','text-primary'); b.classList.add('text-secondary'); });
+        const a = document.getElementById('tab-'+status);
+        a.classList.add('active','text-primary'); a.classList.remove('text-secondary');
+        document.querySelectorAll('.task-row').forEach(r => { r.style.display = (status==='all'||r.dataset.status===status)?'':'none'; });
+    }
+</script>
+{% endblock %}

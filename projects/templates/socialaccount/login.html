@@ -1,0 +1,71 @@
+{% extends "projects/base_auth.html" %}
+{% load socialaccount %}
+{% block title %}Connect Google — KanFlow{% endblock %}
+
+{% block tagline %}เชื่อมต่อบัญชี KanFlow กับ Google{% endblock %}
+
+{% block card_content %}
+<div class="mb-6">
+    <h2 class="font-headline font-extrabold text-2xl text-primary mb-1">
+        Continue with Google
+    </h2>
+    <p class="text-secondary text-sm">
+        คุณกำลังจะเข้าสู่ระบบด้วยบัญชี Google:
+        <span class="font-semibold text-primary">{{ user_display }}</span>
+    </p>
+</div>
+
+{% if messages %}
+    <div class="space-y-2 mb-5">
+        {% for message in messages %}
+            <div class="flex items-center gap-3 rounded-xl p-3
+                {% if message.tags == 'success' %}bg-primary-fixed text-on-primary-fixed-variant
+                {% elif message.tags == 'error' %}bg-error-container text-on-error-container
+                {% else %}bg-surface-container text-on-surface{% endif %}">
+                <span class="material-symbols-outlined fill-icon" style="font-size:18px">
+                    {% if message.tags == 'success' %}check_circle{% elif message.tags == 'error' %}error{% else %}info{% endif %}
+                </span>
+                <p class="text-sm font-medium">{{ message }}</p>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="space-y-4">
+    <div class="flex items-center gap-3 p-3.5 rounded-2xl bg-surface-container">
+        <div class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="w-5 h-5">
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-on-surface truncate">
+                {{ account.get_provider.name }} account
+            </p>
+            <p class="text-xs text-secondary truncate">
+                {{ account.extra_data.email|default:"Google account" }}
+            </p>
+        </div>
+    </div>
+
+    <p class="text-xs text-secondary leading-relaxed">
+        เมื่อกดปุ่มด้านล่าง ระบบจะสร้าง/เชื่อมต่อบัญชี KanFlow
+        เข้ากับบัญชี Google นี้ และเข้าสู่ระบบให้อัตโนมัติ
+    </p>
+
+    <form method="post" class="space-y-3">
+        {% csrf_token %}
+        <button type="submit" class="btn-auth w-full">
+            <span class="material-symbols-outlined" style="font-size:18px">login</span>
+            Continue as {{ user_display }}
+        </button>
+    </form>
+
+    <form method="post" action="{% url 'account_logout' %}" class="pt-1">
+        {% csrf_token %}
+        <button type="submit"
+            class="w-full text-sm font-semibold text-secondary hover:text-primary mt-1">
+            ใช้บัญชีอื่นแทน
+        </button>
+    </form>
+</div>
+{% endblock %}
+

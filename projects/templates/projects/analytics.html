@@ -1,0 +1,409 @@
+{% extends "projects/base.html" %}
+{% block title %}Analytics — KanFlow{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .section-label {
+        display: inline-block;
+        width: 3px; height: 20px;
+        background: linear-gradient(180deg, #1a146b, #5654a8);
+        border-radius: 2px;
+        margin-right: 10px;
+        vertical-align: middle;
+    }
+    .momentum-bar-track { height: 6px; background: #eceef0; border-radius: 9999px; overflow: hidden; width: 120px; }
+    .momentum-bar-fill  { height: 100%; border-radius: 9999px; background: linear-gradient(90deg, #1a146b, #5654a8); }
+    .momentum-bar-fill.at-risk { background: linear-gradient(90deg, #ba1a1a, #e97575); }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<button class="flex items-center gap-2 bg-surface-container text-secondary hover:text-primary px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+    <span class="material-symbols-outlined" style="font-size:16px">calendar_today</span>
+    Last 30 Days
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="px-6 lg:px-10 py-8 max-w-6xl mx-auto">
+
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-xs text-secondary mb-4 uppercase tracking-widest font-bold">
+        <span>Workspace</span>
+        <span class="material-symbols-outlined" style="font-size:14px">chevron_right</span>
+        <span class="text-primary">Analytics</span>
+    </div>
+
+    <div class="mb-8">
+        <h2 class="font-headline font-extrabold text-4xl text-primary mb-1">Workspace Overview</h2>
+        <p class="text-secondary">Tracking momentum across all active initiatives.</p>
+    </div>
+
+    <!-- Stats row -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="w-10 h-10 rounded-2xl bg-primary-fixed flex items-center justify-center mb-3">
+                <span class="material-symbols-outlined text-on-primary-fixed-variant fill-icon">folder</span>
+            </div>
+            <p class="font-headline font-extrabold text-3xl text-primary">{{ total_projects }}</p>
+            <p class="text-xs text-secondary font-semibold mt-1">Total Projects</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="w-10 h-10 rounded-2xl bg-secondary-container flex items-center justify-center mb-3">
+                <span class="material-symbols-outlined text-on-secondary-container fill-icon">pending_actions</span>
+            </div>
+            <p class="font-headline font-extrabold text-3xl text-primary">{{ total_tasks }}</p>
+            <p class="text-xs text-secondary font-semibold mt-1">Total Tasks</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="w-10 h-10 rounded-2xl bg-tertiary-fixed/20 flex items-center justify-center mb-3">
+                <span class="material-symbols-outlined text-on-tertiary-container fill-icon">check_circle</span>
+            </div>
+            <p class="font-headline font-extrabold text-3xl text-primary">{{ done_tasks }}</p>
+            <p class="text-xs text-secondary font-semibold mt-1">Tasks Completed</p>
+        </div>
+        <!-- Completion Rate — dark card like Stitch -->
+        <div class="bg-primary-container rounded-3xl p-5 shadow-card shadow-primary/20">
+            <p class="text-[10px] font-black text-on-primary-container uppercase tracking-widest mb-2">Target: 80%</p>
+            <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center mb-2">
+                <span class="material-symbols-outlined text-on-primary-container fill-icon">speed</span>
+            </div>
+            <p class="font-headline font-extrabold text-4xl text-white">{{ completion_rate }}%</p>
+            <p class="text-xs text-on-primary-container font-semibold mt-1">Completion Rate</p>
+        </div>
+    </div>
+
+    <!-- Charts row -->
+    {% if total_tasks == 0 %}
+    <!-- ── Empty State ── -->
+    <div class="bg-surface-container-lowest rounded-3xl shadow-card p-12 text-center mb-8">
+        <div class="w-20 h-20 rounded-4xl bg-primary-fixed flex items-center justify-center mx-auto mb-5">
+            <span class="material-symbols-outlined text-on-primary-fixed-variant" style="font-size:40px">bar_chart</span>
+        </div>
+        <h3 class="font-headline font-extrabold text-2xl text-primary mb-2">No data yet</h3>
+        <p class="text-secondary text-sm max-w-sm mx-auto mb-6 leading-relaxed">
+            Create some tasks in your projects and analytics will start populating automatically.
+        </p>
+        <a href="/"
+            class="inline-flex items-center gap-2 btn-primary-gradient text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">
+            <span class="material-symbols-outlined" style="font-size:16px">add</span>
+            Go to Projects
+        </a>
+    </div>
+
+    {% else %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Donut -->
+        <div class="bg-surface-container-lowest rounded-3xl p-6 shadow-card">
+            <h3 class="font-headline font-bold text-lg text-primary mb-5 flex items-center">
+                <span class="section-label"></span> Task Status Overview
+            </h3>
+            <div class="flex items-center gap-8">
+                <div style="width:180px;height:180px;position:relative;flex-shrink:0">
+                    <canvas id="donutChart"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <p class="font-headline font-extrabold text-2xl text-primary">{{ total_tasks }}</p>
+                        <p class="text-[10px] text-secondary font-bold uppercase tracking-widest">Total</p>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        <span class="w-3 h-3 rounded-full bg-primary flex-shrink-0"></span>
+                        <div>
+                            <p class="text-xs font-semibold text-on-surface">In Progress</p>
+                            <p class="text-[10px] text-secondary">({{ doing_tasks }} tasks)</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="w-3 h-3 rounded-full bg-tertiary-fixed-dim flex-shrink-0"></span>
+                        <div>
+                            <p class="text-xs font-semibold text-on-surface">Completed</p>
+                            <p class="text-[10px] text-secondary">({{ done_tasks }} tasks)</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="w-3 h-3 rounded-full bg-outline-variant flex-shrink-0"></span>
+                        <div>
+                            <p class="text-xs font-semibold text-on-surface">Pending</p>
+                            <p class="text-[10px] text-secondary">({{ todo_tasks }} tasks)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bar chart -->
+        <div class="bg-surface-container-lowest rounded-3xl p-6 shadow-card">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-headline font-bold text-lg text-primary flex items-center">
+                    <span class="section-label"></span> Velocity per Project
+                </h3>
+                <div class="flex items-center gap-3 text-[10px] font-black text-secondary uppercase tracking-widest">
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim inline-block"></span> Done</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-outline-variant inline-block"></span> Remaining</span>
+                </div>
+            </div>
+            <canvas id="barChart" height="180"></canvas>
+        </div>
+    </div>
+
+    <!-- Weekly Activity + Priority Breakdown row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+        <!-- Weekly Tasks Completed (line chart) — spans 2 cols -->
+        <div class="bg-surface-container-lowest rounded-3xl p-6 shadow-card md:col-span-2">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-headline font-bold text-lg text-primary flex items-center">
+                    <span class="section-label"></span> Weekly Activity
+                </h3>
+                <span class="text-[10px] font-black text-on-primary-fixed-variant bg-primary-fixed px-3 py-1 rounded-full uppercase tracking-widest">Last 8 Weeks</span>
+            </div>
+            <canvas id="weeklyChart" height="130"></canvas>
+        </div>
+
+        <!-- Priority Breakdown (horizontal bar) -->
+        <div class="bg-surface-container-lowest rounded-3xl p-6 shadow-card">
+            <h3 class="font-headline font-bold text-lg text-primary mb-5 flex items-center">
+                <span class="section-label"></span> Priority Mix
+            </h3>
+            <div class="space-y-4">
+                <!-- High -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5">
+                        <span class="font-bold text-error flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-error inline-block"></span> High
+                        </span>
+                        <span class="font-black text-on-surface">{{ priority_high }}</span>
+                    </div>
+                    <div class="h-2 bg-surface-container rounded-full overflow-hidden">
+                        <div class="h-full rounded-full bg-error transition-all duration-700"
+                            style="width: {% if total_tasks %}{% widthratio priority_high total_tasks 100 %}{% else %}0{% endif %}%"></div>
+                    </div>
+                </div>
+                <!-- Medium -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5">
+                        <span class="font-bold text-on-error-container flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-on-error-container inline-block"></span> Medium
+                        </span>
+                        <span class="font-black text-on-surface">{{ priority_medium }}</span>
+                    </div>
+                    <div class="h-2 bg-surface-container rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all duration-700"
+                            style="width: {% if total_tasks %}{% widthratio priority_medium total_tasks 100 %}{% else %}0{% endif %}%; background:#f59e0b;"></div>
+                    </div>
+                </div>
+                <!-- Low -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5">
+                        <span class="font-bold text-on-tertiary-container flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim inline-block"></span> Low
+                        </span>
+                        <span class="font-black text-on-surface">{{ priority_low }}</span>
+                    </div>
+                    <div class="h-2 bg-surface-container rounded-full overflow-hidden">
+                        <div class="h-full rounded-full bg-tertiary-fixed-dim transition-all duration-700"
+                            style="width: {% if total_tasks %}{% widthratio priority_low total_tasks 100 %}{% else %}0{% endif %}%"></div>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-surface-container">
+                    <!-- Overdue stat -->
+                    <div class="flex items-center justify-between bg-error-container/50 rounded-2xl px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-on-error-container fill-icon" style="font-size:16px">warning</span>
+                            <span class="text-xs font-bold text-on-error-container">Overdue</span>
+                        </div>
+                        <span class="font-headline font-extrabold text-xl text-error">{{ overdue_tasks }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Performance Breakdown -->
+    <div class="bg-surface-container-lowest rounded-3xl shadow-card overflow-hidden">
+        <div class="px-6 py-5 border-b border-surface-container">
+            <h3 class="font-headline font-bold text-lg text-primary flex items-center">
+                <span class="section-label"></span> Project Performance Breakdown
+            </h3>
+        </div>
+
+        <!-- Table header -->
+        <div class="grid grid-cols-5 gap-4 px-6 py-3 bg-surface-container-low">
+            <p class="text-[10px] font-black text-secondary uppercase tracking-widest col-span-2">Project Identity</p>
+            <p class="text-[10px] font-black text-secondary uppercase tracking-widest">Tasks</p>
+            <p class="text-[10px] font-black text-secondary uppercase tracking-widest">Momentum</p>
+            <p class="text-[10px] font-black text-secondary uppercase tracking-widest text-right">Progress</p>
+        </div>
+
+        <div class="divide-y divide-surface-container">
+            {% for p in project_stats %}
+            <div class="grid grid-cols-5 gap-4 px-6 py-4 items-center hover:bg-surface-container-low transition-colors">
+                <!-- Identity -->
+                <div class="flex items-center gap-3 col-span-2">
+                    <a href="/project/{{ p.id }}/" class="w-10 h-10 rounded-2xl btn-primary-gradient flex items-center justify-center text-white font-headline font-bold text-sm shrink-0 hover:opacity-80 transition-opacity" title="ไปที่โปรเจค {{ p.name }}">
+                        {{ p.name|slice:":2"|upper }}
+                    </a>
+                    <div>
+                        <p class="font-semibold text-sm text-on-surface">{{ p.name }}</p>
+                        <p class="text-xs text-secondary">{{ p.done }}/{{ p.total }} tasks</p>
+                    </div>
+                </div>
+                <!-- Tasks count -->
+                <p class="font-headline font-bold text-lg text-primary">{{ p.total }}</p>
+                <!-- Momentum bar -->
+                <div class="momentum-bar-track">
+                    <div class="momentum-bar-fill {% if p.progress < 30 %}at-risk{% endif %}"
+                        style="width: {{ p.progress }}%"></div>
+                </div>
+                <!-- Progress % -->
+                <p class="font-headline font-extrabold text-xl text-primary text-right">{{ p.progress }}%</p>
+            </div>
+            {% empty %}
+            <div class="py-10 text-center text-secondary text-sm">No project data yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% endif %}{# end total_tasks > 0 #}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+{% if total_tasks > 0 %}
+    // Donut
+    new Chart(document.getElementById('donutChart'), {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [{{ doing_tasks }}, {{ done_tasks }}, {{ todo_tasks }}],
+                backgroundColor: ['#1a146b', '#4edea3', '#c8c5d3'],
+                borderWidth: 0, hoverOffset: 4,
+            }]
+        },
+        options: {
+            cutout: '72%',
+            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+        }
+    });
+
+    // Bar — stacked: Done vs Remaining
+    (function() {
+        const doneData      = [{% for p in project_stats %}{{ p.done }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        const totalData     = [{% for p in project_stats %}{{ p.total }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        const remainingData = totalData.map((t, i) => Math.max(0, t - doneData[i]));
+
+        new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: [{% for p in project_stats %}'{{ p.name|truncatechars:10 }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+                datasets: [
+                    {
+                        label: 'Done',
+                        data: doneData,
+                        backgroundColor: '#4edea3',
+                        hoverBackgroundColor: '#14ba82',
+                        borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 8, bottomRight: 8 },
+                        borderSkipped: false,
+                    },
+                    {
+                        label: 'Remaining',
+                        data: remainingData,
+                        backgroundColor: '#e2dfff',
+                        hoverBackgroundColor: '#c3c0ff',
+                        borderRadius: { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 },
+                        borderSkipped: false,
+                    }
+                ]
+            },
+            options: {
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterBody: function(items) {
+                                const idx   = items[0].dataIndex;
+                                const pct   = totalData[idx] > 0 ? Math.round(doneData[idx] / totalData[idx] * 100) : 0;
+                                return [`Progress: ${pct}%`];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: true, grid: { display: false }, ticks: { color:'#474651', font:{family:'Inter', size:11} } },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision:0, color:'#474651', font:{family:'Inter', size:11} }, grid: { color:'#f2f4f6' } }
+                }
+            }
+        });
+    })();
+
+    // Weekly Activity Line Chart
+    (function() {
+        const weeklyLabels = [{% for w in weekly_data %}'{{ w.label }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+        const weeklyDone   = [{% for w in weekly_data %}{{ w.done }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        const weeklyAdded  = [{% for w in weekly_data %}{{ w.added }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+        new Chart(document.getElementById('weeklyChart'), {
+            type: 'line',
+            data: {
+                labels: weeklyLabels,
+                datasets: [
+                    {
+                        label: 'Completed',
+                        data: weeklyDone,
+                        borderColor: '#4edea3',
+                        backgroundColor: 'rgba(78,222,163,0.10)',
+                        pointBackgroundColor: '#4edea3',
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2.5,
+                    },
+                    {
+                        label: 'Added',
+                        data: weeklyAdded,
+                        borderColor: '#c3c0ff',
+                        backgroundColor: 'rgba(195,192,255,0.06)',
+                        pointBackgroundColor: '#c3c0ff',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: false,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        borderDash: [5, 4],
+                    }
+                ]
+            },
+            options: {
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            font: { family:'Inter', size:11, weight:'700' },
+                            color: '#474651',
+                            padding: 16,
+                        }
+                    },
+                    tooltip: { backgroundColor:'#1a146b', titleFont:{family:'Inter'}, bodyFont:{family:'Inter'} }
+                },
+                scales: {
+                    x: { grid: { display:false }, ticks: { color:'#474651', font:{family:'Inter', size:11} } },
+                    y: { beginAtZero:true, ticks: { precision:0, color:'#474651', font:{family:'Inter', size:11} }, grid: { color:'#f2f4f6' } }
+                }
+            }
+        });
+    })();
+{% endif %}
+</script>
+{% endblock %}

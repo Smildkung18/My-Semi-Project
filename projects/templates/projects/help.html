@@ -1,0 +1,228 @@
+{% extends "projects/base.html" %}
+{% block title %}Help & FAQ — KanFlow{% endblock %}
+{% block page_title %}Help & FAQ{% endblock %}
+
+{% block extra_head %}
+<style>
+    .help-card { transition: all 0.2s cubic-bezier(0.16,1,0.3,1); }
+    .help-card:hover { transform: translateY(-3px); box-shadow: 0 20px 48px rgba(26,20,107,0.08); }
+
+    .shortcut-row { border-bottom: 1px solid #eceef0; }
+    .shortcut-row:last-child { border-bottom: none; }
+
+    .kbd-key {
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #eceef0; color: #474651;
+        border-radius: 6px; padding: 3px 8px;
+        font-size: 11px; font-weight: 700; font-family: 'Inter', monospace;
+        border: 1px solid #c8c5d3;
+        box-shadow: 0 2px 0 #c8c5d3;
+        min-width: 28px;
+    }
+
+    details summary { cursor: pointer; list-style: none; }
+    details summary::-webkit-details-marker { display: none; }
+    details[open] .chevron-icon { transform: rotate(180deg); }
+    .chevron-icon { transition: transform 0.2s ease; }
+
+    .faq-item { border-bottom: 1px solid #eceef0; }
+    .faq-item:last-child { border-bottom: none; }
+    
+    .shortcut-active { 
+        background: rgba(26, 20, 107, 0.05); 
+        transition: background 0.2s ease;
+    }
+    
+    .kbd-key:active {
+        transform: translateY(1px);
+        box-shadow: 0 1px 0 #c8c5d3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-3 sm:px-6 lg:px-10 py-4 sm:py-8 max-w-5xl mx-auto">
+
+    <!-- Hero section -->
+    <div class="mb-10">
+        <h2 class="font-headline font-extrabold text-4xl text-primary mb-2">How can we help?</h2>
+        <p class="text-secondary max-w-xl">Search our knowledge base or browse the categories below to get the most out of KanFlow's precision workspace.</p>
+    </div>
+
+    <!-- Quick link cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5 mb-6 sm:mb-10">
+        <!-- Documentation -->
+        <div class="help-card bg-surface-container-lowest rounded-3xl p-6 shadow-card">
+            <div class="w-12 h-12 rounded-2xl bg-primary-fixed flex items-center justify-center mb-4">
+                <span class="material-symbols-outlined text-on-primary-fixed-variant fill-icon">menu_book</span>
+            </div>
+            <h3 class="font-headline font-bold text-base text-primary mb-2">Documentation</h3>
+            <p class="text-sm text-secondary leading-relaxed mb-4">Comprehensive guides for every feature from basic setup to advanced workflows.</p>
+            <a href="#" class="text-sm font-bold text-primary hover:text-primary-container transition-colors flex items-center gap-1">
+                Explore Guides
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+            </a>
+        </div>
+
+        <!-- Keyboard shortcuts -->
+        <div class="help-card bg-surface-container-lowest rounded-3xl p-6 shadow-card">
+            <div class="w-12 h-12 rounded-2xl bg-tertiary-fixed/20 flex items-center justify-center mb-4">
+                <span class="material-symbols-outlined text-on-tertiary-container fill-icon">keyboard</span>
+            </div>
+            <h3 class="font-headline font-bold text-base text-primary mb-2">Keyboard Shortcuts</h3>
+            <p class="text-sm text-secondary leading-relaxed mb-4">Master the Fluid Architect interface with powerful professional hotkeys.</p>
+            <a href="#shortcuts" class="text-sm font-bold text-primary hover:text-primary-container transition-colors flex items-center gap-1">
+                View Cheat Sheet
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+            </a>
+        </div>
+
+        <!-- Contact support -->
+        <div class="help-card bg-surface-container-lowest rounded-3xl p-6 shadow-card">
+            <div class="w-12 h-12 rounded-2xl bg-secondary-container flex items-center justify-center mb-4">
+                <span class="material-symbols-outlined text-on-secondary-container fill-icon">headset_mic</span>
+            </div>
+            <h3 class="font-headline font-bold text-base text-primary mb-2">Contact Support</h3>
+            <p class="text-sm text-secondary leading-relaxed mb-4">Can't find what you need? Our specialist team is ready to assist you personally.</p>
+            <a href="#" class="text-sm font-bold text-primary hover:text-primary-container transition-colors flex items-center gap-1">
+                Open a Ticket
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Two-column layout: shortcuts + FAQ -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+
+        <!-- Key Commands -->
+        <div id="shortcuts">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-headline font-bold text-xl text-primary">Key Commands</h3>
+                <span class="text-[10px] font-black text-on-primary-fixed-variant bg-primary-fixed px-3 py-1 rounded-full uppercase tracking-widest">Productivity</span>
+            </div>
+            <div class="bg-surface-container-lowest rounded-3xl shadow-card overflow-hidden">
+                {% for item in shortcuts %}
+                <div class="shortcut-row flex items-center justify-between px-5 py-4">
+                    <span class="text-sm font-semibold text-on-surface">{{ item.label }}</span>
+                    <div class="flex items-center gap-1">
+                        {% for key in item.keys %}
+                        <span class="kbd-key">{{ key }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-headline font-bold text-xl text-primary">Frequently Asked Questions</h3>
+            </div>
+            <div class="bg-surface-container-lowest rounded-3xl shadow-card overflow-hidden">
+                {% for faq in faqs %}
+                <details class="faq-item group">
+                    <summary class="flex items-center justify-between px-5 py-4 hover:bg-surface-container-low transition-colors">
+                        <span class="text-sm font-semibold text-on-surface pr-4">{{ faq.question }}</span>
+                        <span class="material-symbols-outlined chevron-icon text-secondary shrink-0" style="font-size:18px">expand_more</span>
+                    </summary>
+                    <div class="px-5 pb-4">
+                        <p class="text-sm text-secondary leading-relaxed">{{ faq.answer }}</p>
+                    </div>
+                </details>
+                {% endfor %}
+            </div>
+
+            <!-- Still need help card -->
+            <div class="mt-5 bg-primary-container rounded-3xl p-5 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-on-primary-container fill-icon">lightbulb</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm text-white">Still have questions?</p>
+                        <p class="text-xs text-on-primary-container">Our community forum is active 24/7 with expert users.</p>
+                    </div>
+                </div>
+                <button class="shrink-0 bg-white text-primary font-bold text-sm px-4 py-2 rounded-xl hover:opacity-90 transition-opacity">
+                    Visit Community
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- JavaScript for Keyboard Shortcuts -->
+<script>
+console.log('Help page loaded - keyboard shortcuts enabled');
+
+document.addEventListener('keydown', function(e) {
+    console.log('Key pressed:', e.key, 'Ctrl:', e.ctrlKey, 'Shift:', e.shiftKey, 'Alt:', e.altKey);
+    
+    // Prevent shortcuts when typing in input/textarea
+    const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
+    if (isTyping) {
+        console.log('Ignoring - user is typing');
+        return;
+    }
+    
+    // Handle shortcuts
+    if (e.key === '/') {
+        console.log('Slash key detected');
+        e.preventDefault();
+        // Quick Search - just focus any search input if available
+        const searchInput = document.querySelector('input[placeholder*="Search"], input[placeholder*="ค้นหา"]');
+        if (searchInput) {
+            console.log('Found search input, focusing');
+            searchInput.focus();
+            searchInput.value = '';
+        } else {
+            console.log('No search input found');
+        }
+    } else if (e.key === 'Escape') {
+        console.log('Escape key detected');
+        // Close Modal
+        const modals = document.querySelectorAll('.modal-overlay, [id*="Modal"]');
+        console.log('Found modals:', modals.length);
+        modals.forEach(modal => {
+            if (!modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+                console.log('Closed modal');
+            }
+        });
+    } else if (e.key === 'P' && e.shiftKey && e.ctrlKey) {
+        console.log('Ctrl+Shift+P detected');
+        e.preventDefault();
+        window.location.href = '/';  // Go to root (projects page)
+    } else if (e.key === 'S' && e.shiftKey && e.ctrlKey) {
+        console.log('Ctrl+Shift+S detected');
+        e.preventDefault();
+        window.location.href = '/settings/';
+    } else if (e.altKey && e.key === 't') {
+        console.log('Alt+T detected');
+        e.preventDefault();
+        window.location.href = '/team/';
+    } else if (e.ctrlKey && e.key === 'Enter') {
+        console.log('Ctrl+Enter detected');
+        e.preventDefault();
+        const focusedForm = document.activeElement.form;
+        if (focusedForm) {
+            const submitBtn = focusedForm.querySelector('button[type="submit"], input[type="submit"]');
+            if (submitBtn) {
+                console.log('Submitting form');
+                submitBtn.click();
+            }
+        }
+    }
+});
+
+// Test function
+window.testShortcuts = function() {
+    console.log('Testing shortcuts...');
+    alert('Keyboard shortcuts are loaded! Try pressing ESC or /');
+};
+</script>
+
+{% endblock %}

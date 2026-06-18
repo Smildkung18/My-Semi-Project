@@ -1,0 +1,156 @@
+{% extends "projects/base_auth.html" %}
+{% load socialaccount %}
+{% block title %}Create Account — KanFlow{% endblock %}
+
+{% block logo %}
+<h1 class="font-headline font-extrabold text-4xl text-primary tracking-tight">KanFlow</h1>
+<p class="text-secondary text-sm mt-1.5 font-medium">Architectural Precision for Teams.</p>
+{% endblock %}
+
+{% block card_content %}
+
+<!-- Feature pills -->
+<div class="flex items-center justify-center gap-3 mb-7">
+    <span class="flex items-center gap-1.5 bg-primary-fixed text-on-primary-fixed-variant text-xs font-bold px-3.5 py-1.5 rounded-full">
+        <span class="material-symbols-outlined fill-icon" style="font-size:14px">check_circle</span>
+        Unlimited projects
+    </span>
+    <span class="flex items-center gap-1.5 bg-tertiary-fixed/20 text-on-tertiary-container text-xs font-bold px-3.5 py-1.5 rounded-full">
+        <span class="material-symbols-outlined fill-icon" style="font-size:14px">group</span>
+        Team collaboration
+    </span>
+</div>
+
+<div class="mb-6 text-center">
+    <h2 class="font-headline font-extrabold text-2xl text-primary mb-1">Create your workspace</h2>
+    <p class="text-secondary text-sm">Start your 14-day premium trial today.</p>
+</div>
+
+{% if error %}
+<div class="flex items-center gap-3 bg-error-container rounded-xl p-4 mb-5">
+    <span class="material-symbols-outlined text-on-error-container fill-icon" style="font-size:18px">error</span>
+    <p class="text-sm font-semibold text-on-error-container">{{ error }}</p>
+</div>
+{% endif %}
+
+<form method="POST" class="space-y-4">
+    {% csrf_token %}
+
+    <!-- Username -->
+    <div>
+        <label class="auth-label">Username</label>
+        <div class="input-wrap">
+            <span class="material-symbols-outlined input-icon">person</span>
+            <input type="text" name="username" placeholder="johndoe_arch" required autofocus
+                class="auth-input" value="{{ request.POST.username|default:'' }}">
+        </div>
+    </div>
+
+    <!-- Email -->
+    <div>
+        <label class="auth-label">Email <span class="text-error text-[10px] normal-case font-normal">* ใช้สำหรับ reset password</span></label>
+        <div class="input-wrap">
+            <span class="material-symbols-outlined input-icon">mail</span>
+            <input type="email" name="email" placeholder="you@example.com" required
+                class="auth-input" value="{{ request.POST.email|default:'' }}">
+        </div>
+    </div>
+
+    <!-- Password -->
+    <div>
+        <label class="auth-label">Password</label>
+        <div class="input-wrap">
+            <span class="material-symbols-outlined input-icon">lock</span>
+            <input type="password" name="password" id="pwInput" placeholder="••••••••••" required
+                class="auth-input" oninput="checkStrength(this.value)">
+        </div>
+        <!-- Strength bar -->
+        <div class="flex gap-1.5 mt-2 items-center">
+            <div id="s1" class="h-1 flex-1 rounded-full bg-surface-container transition-all duration-300"></div>
+            <div id="s2" class="h-1 flex-1 rounded-full bg-surface-container transition-all duration-300"></div>
+            <div id="s3" class="h-1 flex-1 rounded-full bg-surface-container transition-all duration-300"></div>
+            <div id="s4" class="h-1 flex-1 rounded-full bg-surface-container transition-all duration-300"></div>
+            <span id="strengthLabel" class="text-[10px] font-black text-secondary uppercase tracking-widest ml-1 w-14 text-right"></span>
+        </div>
+    </div>
+
+    <!-- Confirm password -->
+    <div>
+        <label class="auth-label">Confirm Password</label>
+        <div class="input-wrap">
+            <span class="material-symbols-outlined input-icon">shield</span>
+            <input type="password" name="confirm" id="cfInput" placeholder="••••••••••" required
+                class="auth-input" oninput="checkMatch()">
+        </div>
+        <p id="matchLabel" class="text-[11px] mt-1.5 font-semibold hidden"></p>
+    </div>
+
+    <button type="submit" class="btn-auth mt-2">
+        Create free account
+        <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
+    </button>
+
+    <!-- Divider -->
+    <div class="relative">
+        <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-surface-container"></div>
+        </div>
+        <div class="relative flex justify-center">
+            <span class="px-3 bg-white text-[10px] font-bold text-secondary uppercase tracking-widest">Or sign up with</span>
+        </div>
+    </div>
+
+    <!-- Google OAuth (allauth standard URL) -->
+    <a href="{% provider_login_url 'google' process='signup' %}"
+        class="flex items-center justify-center gap-3 w-full py-3 bg-surface-container-low hover:bg-surface-container border border-outline-variant/30 rounded-xl transition-colors font-semibold text-sm text-on-surface">
+        <!-- Google "G" SVG icon -->
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+            <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+    </a>
+
+    <p class="text-center text-sm text-secondary pt-1">
+        Already have an account?
+        <a href="/login/" class="font-bold text-primary hover:text-primary-container transition-colors ml-1">Sign In</a>
+    </p>
+</form>
+{% endblock %}
+
+{% block below_card %}
+<div class="flex items-center justify-center gap-2 mt-5">
+    <div class="w-6 h-1.5 rounded-full bg-primary"></div>
+    <div class="w-2 h-1.5 rounded-full bg-outline-variant"></div>
+    <div class="w-2 h-1.5 rounded-full bg-outline-variant"></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function checkStrength(pw) {
+        let s = 0;
+        if (pw.length >= 8) s++;
+        if (/[A-Z]/.test(pw)) s++;
+        if (/[0-9]/.test(pw)) s++;
+        if (/[^A-Za-z0-9]/.test(pw)) s++;
+        const colors = ['','#ba1a1a','#f59e0b','#4edea3','#4edea3'];
+        const labels = ['','WEAK','FAIR','GOOD','SECURE'];
+        for (let i=1;i<=4;i++) document.getElementById('s'+i).style.background = i<=s ? colors[s] : '#eceef0';
+        const lbl = document.getElementById('strengthLabel');
+        lbl.textContent = pw.length ? labels[s] : '';
+        lbl.style.color = colors[s] || '#777682';
+    }
+    function checkMatch() {
+        const pw = document.getElementById('pwInput').value;
+        const cf = document.getElementById('cfInput').value;
+        const lbl = document.getElementById('matchLabel');
+        if (!cf) { lbl.classList.add('hidden'); return; }
+        lbl.classList.remove('hidden');
+        lbl.textContent = pw===cf ? '✓ Passwords match' : '✗ Passwords do not match';
+        lbl.style.color = pw===cf ? '#14ba82' : '#ba1a1a';
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,597 @@
+{% extends "projects/base.html" %}
+{% block title %}Team — KanFlow{% endblock %}
+{% block page_title %}Team{% endblock %}
+
+{% block extra_head %}
+<style>
+    .member-card { transition: all 0.25s cubic-bezier(0.16,1,0.3,1); }
+    .member-card:hover { transform: translateY(-3px); box-shadow: 0 20px 48px rgba(26,20,107,0.09); }
+
+    .modal-backdrop { background: rgba(25,21,95,0.45); backdrop-filter: blur(12px); animation: fadeIn 0.2s ease; }
+    .modal-panel { animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1); }
+    @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(20px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+    .input-inset { background:#f2f4f6; border:none; border-bottom:2px solid transparent; transition:all 0.2s ease; border-radius:0.75rem; }
+    .input-inset:focus { outline:none; border-bottom-color:#1a146b; background:#ffffff; }
+
+    .project-chip { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:600; background:#e2dfff; color:#3e3c8f; border:1px solid #c3c0ff; }
+
+    .checkbox-custom { appearance:none; width:18px; height:18px; border:2px solid #c8c5d3; border-radius:5px; cursor:pointer; transition:all 0.15s ease; flex-shrink:0; }
+    .checkbox-custom:checked { background:#1a146b; border-color:#1a146b; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E"); }
+
+    /* Avatar Protection */
+    .no-drag {
+        -webkit-user-drag: none;
+        user-drag: none;
+    }
+
+    .no-select {
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    .no-right-click {
+        pointer-events: auto;
+    }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<button onclick="openInviteModal()"
+    class="flex items-center gap-2 btn-primary-gradient text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-95">
+    <span class="material-symbols-outlined" style="font-size:16px">person_add</span>
+    Invite Member
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="px-3 sm:px-6 lg:px-10 py-4 sm:py-8 max-w-6xl mx-auto">
+
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-xs text-secondary mb-4 uppercase tracking-widest font-bold">
+        <span>Workspace</span>
+        <span class="material-symbols-outlined" style="font-size:14px">chevron_right</span>
+        <span class="text-primary">Team Management</span>
+    </div>
+
+    <div class="flex items-start justify-between mb-8">
+        <div>
+            <h2 class="font-headline font-extrabold text-4xl text-primary mb-2">Our Team</h2>
+            <p class="text-secondary max-w-lg">จัดการสมาชิกและกำหนดสิทธิ์การเข้าถึงแต่ละโปรเจค</p>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-8">
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="w-10 h-10 rounded-2xl bg-primary-fixed flex items-center justify-center mb-3">
+                <span class="material-symbols-outlined text-on-primary-fixed-variant fill-icon">group</span>
+            </div>
+            <p class="text-[10px] font-black text-secondary uppercase tracking-widest mb-1">Active Members</p>
+            <p class="font-headline font-extrabold text-3xl text-primary">{{ members|length }}</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="w-10 h-10 rounded-2xl bg-tertiary-fixed/20 flex items-center justify-center mb-3">
+                <span class="material-symbols-outlined text-on-tertiary-container fill-icon">check_circle</span>
+            </div>
+            <p class="text-[10px] font-black text-secondary uppercase tracking-widest mb-1">Total Tasks</p>
+            <p class="font-headline font-extrabold text-3xl text-primary">{{ total_tasks }}</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="w-10 h-10 rounded-2xl bg-secondary-container flex items-center justify-center mb-3">
+                <span class="material-symbols-outlined text-on-secondary-container fill-icon">folder</span>
+            </div>
+            <p class="text-[10px] font-black text-secondary uppercase tracking-widest mb-1">Projects</p>
+            <p class="font-headline font-extrabold text-3xl text-primary">{{ projects|length }}</p>
+        </div>
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="w-10 h-10 rounded-2xl bg-error-container flex items-center justify-center mb-3">
+                <span class="material-symbols-outlined text-on-error-container fill-icon">bolt</span>
+            </div>
+            <p class="text-[10px] font-black text-secondary uppercase tracking-widest mb-1">Capacity</p>
+            <p class="font-headline font-extrabold text-2xl text-primary">{{ capacity }}</p>
+        </div>
+    </div>
+
+    <!-- Alerts -->
+    {% if invite_success %}
+    <div class="flex items-center gap-3 bg-tertiary-fixed/20 border border-on-tertiary-container/20 rounded-2xl p-4 mb-6">
+        <span class="material-symbols-outlined text-on-tertiary-container fill-icon">check_circle</span>
+        <p class="text-sm font-semibold text-on-tertiary-container">{{ invite_success }}</p>
+    </div>
+    {% endif %}
+    {% if invite_error %}
+    <div class="flex items-center gap-3 bg-error-container rounded-2xl p-4 mb-6">
+        <span class="material-symbols-outlined text-on-error-container fill-icon">error</span>
+        <p class="text-sm font-semibold text-on-error-container">{{ invite_error }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Member cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+        {% for member in members %}
+        <div class="member-card bg-surface-container-lowest rounded-3xl p-6 shadow-card relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-24 h-24 bg-primary-fixed/30 rounded-bl-full -mr-6 -mt-6"></div>
+
+            <!-- Avatar + name -->
+            <div class="flex items-center gap-4 mb-4 relative">
+                {% if member.id == request.user.id %}
+                    <a href="/profile/" class="block hover:scale-105 transition-transform">
+                {% else %}
+                    <a href="/profile/{{ member.username }}/" class="block hover:scale-105 transition-transform">
+                {% endif %}
+                    {% if member.profile.avatar %}
+                    <img src="{{ member.profile.avatar.url }}" class="w-14 h-14 rounded-2xl object-cover ring-2 ring-white shadow-sm shrink-0 avatar no-drag no-select no-right-click" alt="avatar" draggable="false">
+                    {% else %}
+                    <div class="w-14 h-14 rounded-2xl btn-primary-gradient flex items-center justify-center text-white font-headline font-extrabold text-xl shrink-0 shadow-lg shadow-primary/20">
+                        {{ member.profile.display_name|default:member.username|slice:":1"|upper }}
+                    </div>
+                    {% endif %}
+                </a>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        {% if member.id == request.user.id %}
+                            <a href="/profile/" class="font-headline font-bold text-base text-primary truncate hover:text-primary/80 transition-colors">{{ member.profile.display_name|default:member.username }}</a>
+                        {% else %}
+                            <a href="/profile/{{ member.username }}/" class="font-headline font-bold text-base text-primary truncate hover:text-primary/80 transition-colors">{{ member.profile.display_name|default:member.username }}</a>
+                        {% endif %}
+                        {% if member.is_owner %}
+                        <span class="text-[10px] font-black bg-primary text-white px-2 py-0.5 rounded-full shrink-0">OWNER</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-xs text-secondary truncate">{{ member.email_masked|default:"No email" }}</p>
+                </div>
+            </div>
+
+            <!-- Task stats -->
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="bg-surface-container-low rounded-2xl p-3 text-center">
+                    <p class="text-[10px] font-black text-secondary uppercase tracking-widest mb-1">Tasks</p>
+                    <p class="font-headline font-extrabold text-2xl text-primary">{{ member.task_count }}</p>
+                </div>
+                <div class="bg-primary-fixed rounded-2xl p-3 text-center">
+                    <p class="text-[10px] font-black text-on-primary-fixed-variant uppercase tracking-widest mb-1">Done</p>
+                    <p class="font-headline font-extrabold text-2xl text-primary">{{ member.done_count }}</p>
+                </div>
+            </div>
+
+            <!-- Projects ที่ member เข้าถึงได้ -->
+            {% if not member.is_owner %}
+            <div class="mb-4">
+                <p class="text-[10px] font-black text-secondary uppercase tracking-widest mb-2">สิทธิ์เข้าถึง</p>
+                {% if member.accessible_projects %}
+                <div class="flex flex-wrap gap-1.5">
+                    {% for pm in member.accessible_projects %}
+                    <span class="project-chip">
+                        <span class="w-1.5 h-1.5 rounded-full
+                            {% if pm.role == 'admin' %}bg-amber-500
+                            {% elif pm.role == 'member' %}bg-primary
+                            {% else %}bg-slate-400{% endif %}">
+                        </span>
+                        {{ pm.project.name|truncatechars:15 }}
+                        <span class="opacity-60">({{ pm.role }})</span>
+                    </span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-xs text-secondary italic">ยังไม่มีสิทธิ์</p>
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-2 pt-3 border-t border-surface-container">
+                <button onclick="openEditModal({{ member.id }}, '{{ member.profile.display_name|default:member.username }}', [{% for pm in member.accessible_projects %}{{ pm.project.id }}{% if not forloop.last %},{% endif %}{% endfor %}], '{{ member.accessible_projects.0.role|default:"member" }}')"
+                    class="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-primary bg-primary-fixed hover:bg-primary-fixed-dim rounded-xl py-2 transition-colors">
+                    <span class="material-symbols-outlined" style="font-size:14px">manage_accounts</span>
+                    จัดการสิทธิ์
+                </button>
+                <button onclick="removeMember({{ member.id }}, '{{ member.profile.display_name|default:member.username }}')"
+                    class="w-9 h-9 flex items-center justify-center text-error bg-error-container/50 hover:bg-error-container rounded-xl transition-colors">
+                    <span class="material-symbols-outlined fill-icon" style="font-size:16px">person_remove</span>
+                </button>
+            </div>
+            {% else %}
+            <div class="pt-3 border-t border-surface-container">
+                <p class="text-xs text-secondary text-center font-semibold">เข้าถึงได้ทุกโปรเจค (Owner)</p>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+            <div class="w-20 h-20 rounded-4xl bg-primary-fixed flex items-center justify-center mb-5">
+                <span class="material-symbols-outlined text-primary" style="font-size:40px">group_add</span>
+            </div>
+            <h3 class="font-headline font-bold text-xl text-primary mb-2">ยังไม่มีสมาชิก</h3>
+            <p class="text-secondary text-sm mb-6">เชิญเพื่อนร่วมทีมมาทำงานด้วยกัน</p>
+            <button onclick="openInviteModal()"
+                class="btn-primary-gradient text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-primary/20">
+                Invite Member
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ══════════ INVITE MODAL ══════════ -->
+<div id="inviteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
+    onclick="closeModalIfBg('inviteModal', event)">
+    <div class="modal-panel bg-surface-bright rounded-2xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-white/40 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between p-8 pb-5">
+            <div>
+                <h2 class="font-headline font-black text-2xl text-primary mb-1">Invite Member</h2>
+                <p class="text-secondary text-sm">เพิ่มสมาชิกและกำหนดสิทธิ์โปรเจคได้เลย</p>
+            </div>
+            <button onclick="closeModal('inviteModal')" class="p-2 hover:bg-surface-container rounded-xl transition-colors text-secondary">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <form method="POST" action="/team/" class="px-8 pb-8 space-y-5">
+            {% csrf_token %}
+
+            <!-- Username -->
+            <div>
+                <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Username</label>
+                <div class="relative">
+                    <input type="text" name="username" id="inviteUsernameInput" required
+                        placeholder="พิมพ์ username..."
+                        oninput="debounceCheckUser(this.value)"
+                        autocomplete="off"
+                        class="input-inset w-full px-4 py-3.5 text-on-surface font-semibold text-sm placeholder:font-normal placeholder:text-outline transition-all"
+                        style="padding-right:44px">
+                    <span id="usernameStatusIcon" class="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined hidden" style="font-size:20px"></span>
+                </div>
+                <p id="usernameMsg" class="hidden mt-1.5 text-xs font-semibold px-1"></p>
+            </div>
+
+            <!-- Role -->
+            <div>
+                <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Role</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="role" value="viewer" class="sr-only peer">
+                        <div class="peer-checked:bg-primary peer-checked:text-white text-secondary bg-surface-container text-center py-2.5 rounded-xl text-xs font-bold transition-all border-2 border-transparent peer-checked:border-primary">👁 Viewer</div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="role" value="member" class="sr-only peer" checked>
+                        <div class="peer-checked:bg-primary peer-checked:text-white text-secondary bg-surface-container text-center py-2.5 rounded-xl text-xs font-bold transition-all border-2 border-transparent peer-checked:border-primary">✏️ Member</div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="role" value="admin" class="sr-only peer">
+                        <div class="peer-checked:bg-primary peer-checked:text-white text-secondary bg-surface-container text-center py-2.5 rounded-xl text-xs font-bold transition-all border-2 border-transparent peer-checked:border-primary">⚡ Admin</div>
+                    </label>
+                </div>
+                <div class="mt-2 text-xs text-secondary space-y-0.5 px-1">
+                    <p>👁 <strong>Viewer</strong> — ดูข้อมูลได้อย่างเดียว</p>
+                    <p>✏️ <strong>Member</strong> — ทำ task ได้ ดูข้อมูลได้</p>
+                    <p>⚡ <strong>Admin</strong> — จัดการ project ได้ทุกอย่าง</p>
+                </div>
+            </div>
+
+            <!-- Projects -->
+            <div>
+                <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">
+                    เลือกโปรเจคที่ให้เข้าถึง <span class="text-error normal-case font-normal">(เลือกอย่างน้อย 1)</span>
+                </label>
+                {% if projects %}
+                <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {% for p in projects %}
+                    <label class="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-container cursor-pointer transition-colors">
+                        <input type="checkbox" name="project_ids" value="{{ p.id }}" class="checkbox-custom">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-on-surface truncate">{{ p.name }}</p>
+                            <p class="text-xs text-secondary">{{ p.get_status_display }}</p>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-sm text-secondary italic py-3">ยังไม่มีโปรเจค กรุณาสร้างโปรเจคก่อน</p>
+                {% endif %}
+            </div>
+
+            <button type="button" onclick="submitInviteForm()"
+                class="w-full btn-primary-gradient text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[1.01] transition-transform">
+                เพิ่มเข้าทีม
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════ EDIT PERMISSION MODAL ══════════ -->
+<div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
+    onclick="closeModalIfBg('editModal', event)">
+    <div class="modal-panel bg-surface-bright rounded-2xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-white/40 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between p-8 pb-5">
+            <div>
+                <h2 class="font-headline font-black text-2xl text-primary mb-1">จัดการสิทธิ์</h2>
+                <p id="editModalSubtitle" class="text-secondary text-sm"></p>
+            </div>
+            <button onclick="closeModal('editModal')" class="p-2 hover:bg-surface-container rounded-xl transition-colors text-secondary">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="px-8 pb-8 space-y-5">
+            <!-- Role -->
+            <div>
+                <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Role</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="edit_role" value="viewer" class="sr-only peer">
+                        <div class="peer-checked:bg-primary peer-checked:text-white text-secondary bg-surface-container text-center py-2.5 rounded-xl text-xs font-bold transition-all border-2 border-transparent peer-checked:border-primary">👁 Viewer</div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="edit_role" value="member" class="sr-only peer">
+                        <div class="peer-checked:bg-primary peer-checked:text-white text-secondary bg-surface-container text-center py-2.5 rounded-xl text-xs font-bold transition-all border-2 border-transparent peer-checked:border-primary">✏️ Member</div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="edit_role" value="admin" class="sr-only peer">
+                        <div class="peer-checked:bg-primary peer-checked:text-white text-secondary bg-surface-container text-center py-2.5 rounded-xl text-xs font-bold transition-all border-2 border-transparent peer-checked:border-primary">⚡ Admin</div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Projects -->
+            <div>
+                <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">โปรเจคที่เข้าถึงได้</label>
+                <div class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {% for p in projects %}
+                    <label class="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-container cursor-pointer transition-colors">
+                        <input type="checkbox" class="checkbox-custom edit-project-cb" value="{{ p.id }}">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-on-surface truncate">{{ p.name }}</p>
+                            <p class="text-xs text-secondary">{{ p.get_status_display }}</p>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button onclick="closeModal('editModal')"
+                    class="flex-1 py-3 border border-surface-container-high rounded-2xl text-sm font-bold text-secondary hover:bg-surface-container transition-colors">
+                    ยกเลิก
+                </button>
+                <button onclick="savePermissions()"
+                    class="flex-1 btn-primary-gradient text-white py-3 rounded-2xl font-bold text-sm shadow-lg shadow-primary/20">
+                    บันทึก
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let _editMemberId = null;
+
+    // ── Username AJAX check ──────────────────────────
+    let _usernameTimer = null;
+    let _usernameValid = false;
+
+    function debounceCheckUser(val) {
+        clearTimeout(_usernameTimer);
+        _usernameValid = false;
+        const icon = document.getElementById('usernameStatusIcon');
+        const msg  = document.getElementById('usernameMsg');
+        const inp  = document.getElementById('inviteUsernameInput');
+
+        if (!val.trim()) {
+            icon.classList.add('hidden');
+            msg.classList.add('hidden');
+            inp.style.borderBottomColor = '';
+            return;
+        }
+        // show loading
+        icon.textContent = 'hourglass_empty';
+        icon.style.color = '#94a3b8';
+        icon.classList.remove('hidden');
+
+        _usernameTimer = setTimeout(() => checkUsername(val.trim()), 500);
+    }
+
+    function checkUsername(username) {
+        const icon = document.getElementById('usernameStatusIcon');
+        const msg  = document.getElementById('usernameMsg');
+        const inp  = document.getElementById('inviteUsernameInput');
+
+        fetch(`/team/check-user/?username=${encodeURIComponent(username)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.exists) {
+                    _usernameValid = true;
+                    icon.textContent = 'check_circle';
+                    icon.style.color = '#14ba82';
+                    icon.classList.remove('hidden');
+                    inp.style.borderBottomColor = '#14ba82';
+                    msg.textContent = `พบผู้ใช้: ${data.display}`;
+                    msg.style.color = '#005236';
+                    msg.classList.remove('hidden');
+                } else {
+                    _usernameValid = false;
+                    icon.textContent = 'cancel';
+                    icon.style.color = '#ba1a1a';
+                    icon.classList.remove('hidden');
+                    inp.style.borderBottomColor = '#ba1a1a';
+                    inp.style.background = '#fff8f7';
+                    msg.textContent = `ไม่พบ username "${username}" ในระบบ`;
+                    msg.style.color = '#ba1a1a';
+                    msg.classList.remove('hidden');
+                }
+            });
+    }
+
+    function openInviteModal() {
+        // reset username field
+        const inp  = document.getElementById('inviteUsernameInput');
+        const icon = document.getElementById('usernameStatusIcon');
+        const msg  = document.getElementById('usernameMsg');
+        if (inp)  { inp.value = ''; inp.style.borderBottomColor = ''; inp.style.background = ''; }
+        if (icon) icon.classList.add('hidden');
+        if (msg)  msg.classList.add('hidden');
+        _usernameValid = false;
+
+        document.getElementById('inviteModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => inp?.focus(), 100);
+    }
+
+    function openEditModal(memberId, username, currentProjectIds, currentRole) {
+        _editMemberId = memberId;
+        document.getElementById('editModalSubtitle').textContent = 'กำหนดสิทธิ์ให้ ' + username;
+
+        // Pre-check projects
+        document.querySelectorAll('.edit-project-cb').forEach(cb => {
+            cb.checked = currentProjectIds.includes(parseInt(cb.value));
+        });
+
+        // Pre-select role
+        document.querySelectorAll('[name="edit_role"]').forEach(r => {
+            r.checked = (r.value === (currentRole || 'member'));
+        });
+
+        document.getElementById('editModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function closeModalIfBg(id, e) {
+        if (e.target === document.getElementById(id)) closeModal(id);
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeModal('inviteModal'); closeModal('editModal'); }
+    });
+
+    function submitInviteForm() {
+        const inp = document.getElementById('inviteUsernameInput');
+        const msg = document.getElementById('usernameMsg');
+        const icon = document.getElementById('usernameStatusIcon');
+
+        if (!inp.value.trim()) {
+            inp.style.borderBottomColor = '#ba1a1a';
+            inp.style.background = '#fff8f7';
+            msg.textContent = 'กรุณาใส่ username';
+            msg.style.color = '#ba1a1a';
+            msg.classList.remove('hidden');
+            inp.focus();
+            return;
+        }
+        if (!_usernameValid) {
+            inp.style.borderBottomColor = '#ba1a1a';
+            inp.style.background = '#fff8f7';
+            msg.textContent = `ไม่พบ username "${inp.value.trim()}" ในระบบ`;
+            msg.style.color = '#ba1a1a';
+            msg.classList.remove('hidden');
+            inp.focus();
+            return;
+        }
+        // ตรวจว่าเลือก project อย่างน้อย 1
+        const checked = document.querySelectorAll('#inviteModal [name="project_ids"]:checked');
+        if (checked.length === 0) {
+            alert('กรุณาเลือกอย่างน้อย 1 โปรเจค');
+            return;
+        }
+        inp.closest('form').submit();
+    }
+
+    function savePermissions() {
+        if (!_editMemberId) return;
+        const project_ids = [...document.querySelectorAll('.edit-project-cb:checked')].map(cb => cb.value);
+        const role = document.querySelector('[name="edit_role"]:checked')?.value || 'member';
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        const body = new URLSearchParams();
+        project_ids.forEach(id => body.append('project_ids', id));
+        body.append('role', role);
+
+        fetch(`/team/member/${_editMemberId}/update/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString(),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') { closeModal('editModal'); location.reload(); }
+            else alert(data.error || 'เกิดข้อผิดพลาด');
+        });
+    }
+
+    function removeMember(memberId, username) {
+        if (!confirm('ลบ ' + username + ' ออกจากทีม?\nสมาชิกจะไม่สามารถเข้าถึงโปรเจคของคุณได้อีก')) return;
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch(`/team/member/${memberId}/remove/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') location.reload();
+            else alert(data.error || 'เกิดข้อผิดพลาด');
+        });
+    }
+
+    function leaveProject(projectId, projectName) {
+        if (!confirm(`ออกจากโปรเจค "${projectName}" ?\nคุณจะไม่สามารถเข้าถึงโปรเจคนี้ได้อีกจนกว่า owner จะเชิญใหม่`)) return;
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch(`/project/${projectId}/leave/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') { location.href = '/'; }
+            else alert(data.error || 'เกิดข้อผิดพลาด');
+        });
+    }
+
+    function requestUpgrade(projectId, projectName, currentRole) {
+        // สร้าง modal เลือก role ที่ต้องการ
+        const roles = { member: 'Member', admin: 'Admin' };
+        const options = Object.entries(roles)
+            .filter(([k]) => k !== currentRole)
+            .map(([k, v]) => `"${v}"`)
+            .join(' หรือ ');
+        if (!options) { alert('คุณมีสิทธิ์สูงสุดแล้ว'); return; }
+
+        const role = prompt(`ขอสิทธิ์สำหรับโปรเจค "${projectName}"\nปัจจุบัน: ${currentRole}\nพิมพ์ role ที่ต้องการ: member หรือ admin`);
+        if (!role) return;
+        const trimmed = role.trim().toLowerCase();
+        if (!['member', 'admin'].includes(trimmed)) {
+            alert('Role ไม่ถูกต้อง กรุณาพิมพ์ "member" หรือ "admin"');
+            return;
+        }
+        if (trimmed === currentRole) { alert('คุณมี role นี้อยู่แล้ว'); return; }
+
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const body = new URLSearchParams({ role: trimmed });
+        fetch(`/project/${projectId}/request-upgrade/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString(),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') alert('✅ ' + (data.message || 'ส่งคำขอสำเร็จ'));
+            else alert('❌ ' + (data.error || 'เกิดข้อผิดพลาด'));
+        });
+    }
+
+    // ── Avatar Right-Click Prevention ───────────────────────────────
+    document.addEventListener("DOMContentLoaded", function () {
+        const avatars = document.querySelectorAll(".avatar");
+
+        avatars.forEach(img => {
+            img.addEventListener("contextmenu", function (e) {
+                e.preventDefault();
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,2051 @@
+{% extends 'projects/base.html' %}
+{% load static %}
+
+{% block title %}Schedule · KanFlow{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Timetable ──────────────────────────────────────────────── */
+.timetable-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.timetable { min-width: 700px; border-collapse: separate; border-spacing: 0; width: 100%; }
+.timetable th {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: #777682; padding: 8px 6px; text-align: center;
+    background: #f7f9fb; border-bottom: 1.5px solid #e6e8ea;
+    position: sticky; top: 0; z-index: 2;
+}
+.timetable th.day-col { min-width: 44px; }
+.timetable td {
+    height: 52px; padding: 0; border-right: 1px solid #eceef0;
+    border-bottom: 1px solid #eceef0; vertical-align: top; position: relative;
+}
+.timetable td.day-label {
+    min-width: 44px; padding: 0 6px; vertical-align: middle; text-align: center;
+    font-size: 10px; font-weight: 800; color: #777682; letter-spacing: .06em;
+    text-transform: uppercase; background: #f7f9fb;
+    border-right: 2px solid #e6e8ea; position: sticky; left: 0; z-index: 1;
+}
+.timetable tr:last-child td { border-bottom: none; }
+
+/* ── Block ─────────────────────────────────────────────────── */
+.sched-block {
+    position: absolute; top: 3px; bottom: 3px; border-radius: 8px;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 4px 8px; overflow: hidden; cursor: pointer;
+    transition: all .15s ease; z-index: 1;
+    box-shadow: 0 2px 6px rgba(0,0,0,.12);
+}
+.sched-block:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.16); }
+.sched-block.theory  { background: linear-gradient(135deg,#1a146b,#3730a3); color:#fff; }
+.sched-block.practice{ background: linear-gradient(135deg,#047857,#065f46); color:#fff; }
+.sched-block.work    { background: linear-gradient(135deg,#be185d,#9d174d); color:#fff; }
+.sched-block .b-title{ font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3; }
+.sched-block .b-meta { font-size:9.5px; opacity:.82; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+
+/* ── Today col highlight ───────────────────────────────────── */
+.today-col   { background: rgba(86,84,168,.04); }
+.today-label { color:#1a146b!important; background:#e2dfff!important; }
+
+/* ── Modals ────────────────────────────────────────────────── */
+.modal-anim { animation: mIn .2s cubic-bezier(.16,1,.3,1) both; }
+@keyframes mIn { from{opacity:0;transform:scale(.95) translateY(8px)} to{opacity:1;transform:scale(1) translateY(0)} }
+
+/* ── Template cards ────────────────────────────────────────── */
+.tmpl-card { transition: all .2s cubic-bezier(.16,1,.3,1); cursor:pointer; }
+.tmpl-card:hover { transform:translateY(-3px); box-shadow:0 20px 48px rgba(26,20,107,.1); }
+.tmpl-card.selected { outline:2.5px solid #1a146b; background:#e2dfff; }
+
+/* ── Type toggle ───────────────────────────────────────────── */
+.type-btn { display:flex;align-items:center;gap:8px;padding:0 16px;height:36px;border-radius:12px;border:2px solid #e6e8ea;background:#eceef0;font-size:14px;font-weight:600;color:#515f74;cursor:pointer;transition:all .15s; }
+.type-btn.active-theory   { border-color:#1a146b; background:#e2dfff; color:#1a146b; }
+.type-btn.active-practice { border-color:#047857; background:#d1fae5; color:#047857; }
+
+/* ── Time badge ────────────────────────────────────────────── */
+.time-badge { display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;color:#515f74;background:#eceef0;border-radius:20px;padding:2px 8px; }
+
+/* ── Spinner ───────────────────────────────────────────────── */
+.spin { animation: spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── Day picker ────────────────────────────────────────────── */
+.dp-btn { height:32px;border-radius:10px;font-size:11px;font-weight:700;border:1.5px solid #e6e8ea;color:#515f74;background:#eceef0;cursor:pointer;transition:all .15s; }
+.dp-btn:hover { background:#e2dfff;color:#1a146b;border-color:#c3c0ff; }
+.dp-btn.active { background:#1a146b;color:#fff;border-color:#1a146b; }
+
+/* ── Time select 24hr – Custom Dropdown ────────────────────── */
+.time-wrap { display:flex;align-items:center;gap:6px; }
+.time-colon { font-size:16px;font-weight:800;color:#515f74;line-height:1; }
+
+/* Custom time dropdown */
+.time-dropdown { position:relative; }
+.time-dropdown-trigger {
+    display:flex; align-items:center; justify-content:space-between; gap:4px;
+    height:38px; padding:0 10px; border-radius:10px;
+    border:1.5px solid #e6e8ea; background:#eceef0;
+    color:#1a1c1e; font-size:14px; font-weight:600;
+    cursor:pointer; transition:all .15s; user-select:none; -webkit-user-select:none;
+}
+.time-dropdown-trigger:hover { border-color:#c3c0ff; background:#e2dfff; color:#1a146b; }
+.time-dropdown-trigger.open { border-color:#1a146b; background:#e2dfff; color:#1a146b; }
+.time-dropdown-trigger .td-chevron { font-size:16px; opacity:.6; transition:transform .15s; }
+.time-dropdown-trigger.open .td-chevron { transform:rotate(180deg); }
+.time-dropdown-menu {
+    position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:9999; background:#fff;
+    border:1.5px solid #e6e8ea; border-radius:12px;
+    box-shadow:0 10px 28px rgba(0,0,0,.12);
+    max-height:180px; overflow-y:auto; padding:4px 0;
+    display:none; min-width:72px;
+}
+.time-dropdown-menu.drop-up {
+    top:auto; bottom:calc(100% + 4px);
+}
+.time-dropdown-menu.show { display:block; }
+.time-dropdown-item {
+    padding:7px 14px; font-size:14px; font-weight:600; color:#374151;
+    cursor:pointer; transition:background .12s; user-select:none;
+    text-align:center;
+}
+.time-dropdown-item:hover { background:#f3f4f6; color:#111827; }
+.time-dropdown-item.selected { background:#e2dfff; color:#1a146b; font-weight:700; }
+</style>
+{% endblock %}
+
+{% block page_title %}Schedule{% endblock %}
+
+{% block header_actions %}
+<button id="btnNewSched" onclick="openNewSchedModal()"
+    class="btn-primary-gradient text-white text-sm font-semibold px-4 h-9 rounded-xl flex items-center gap-1.5 transition-all hover:-translate-y-0.5">
+    <span class="material-symbols-outlined" style="font-size:18px">add</span>
+    สร้างตาราง
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="px-3 sm:px-6 lg:px-8 py-3 sm:py-6 max-w-[1400px] mx-auto">
+
+    <!-- Loading state -->
+    <div id="pageLoader" class="flex items-center justify-center py-24">
+        <svg class="spin w-8 h-8 text-primary" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="30 10" opacity=".4"/>
+            <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+    </div>
+
+    <!-- App shell (hidden until data loaded) -->
+    <div id="appShell" class="hidden">
+
+        <!-- ── Tab bar ── -->
+        <div class="flex items-center gap-2 flex-wrap mb-3 sm:mb-6 overflow-x-auto pb-1" id="tabBar"></div>
+
+        <!-- ── Empty state ── -->
+        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-28 text-center">
+            <div class="w-16 h-16 rounded-3xl bg-primary-fixed flex items-center justify-center mb-5 mx-auto">
+                <span class="material-symbols-outlined text-primary fill-icon" style="font-size:32px">calendar_today</span>
+            </div>
+            <h2 class="font-headline font-bold text-xl text-on-surface mb-2">ยังไม่มีตารางเลย</h2>
+            <p class="text-sm text-secondary mb-6 max-w-xs">สร้างตารางแรกของคุณเพื่อจัดการเวลา รองรับสูงสุด 3 ตาราง</p>
+            <button onclick="openNewSchedModal()"
+                class="btn-primary-gradient text-white text-sm font-semibold px-6 h-10 rounded-xl flex items-center gap-2 mx-auto transition-all hover:-translate-y-0.5">
+                <span class="material-symbols-outlined" style="font-size:18px">add</span>
+                สร้างตารางแรก
+            </button>
+        </div>
+
+        <!-- ── Schedule content ── -->
+        <div id="schedContent" class="hidden space-y-6">
+
+            <!-- Summary strip -->
+            <div id="summaryStrip" class="grid gap-3"></div>
+
+            <!-- Main grid -->
+            <div class="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-3 sm:gap-6">
+
+                <!-- Timetable card -->
+                <div class="bg-surface-container-lowest rounded-3xl shadow-card border border-white/60 overflow-hidden">
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-surface-container">
+                        <div class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-primary fill-icon" style="font-size:20px">table_chart</span>
+                            <h3 class="font-headline font-bold text-on-surface" id="ttTitle">ตาราง</h3>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openAIImportModal()"
+                                class="flex items-center gap-1.5 text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-indigo-500 hover:from-violet-700 hover:to-indigo-600 px-3 h-8 rounded-xl transition-all shadow-sm hover:-translate-y-0.5">
+                                <span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>
+                                นำเข้าด้วย AI
+                            </button>
+                            <button onclick="openAddEntryModal()"
+                                class="flex items-center gap-1.5 text-sm font-semibold text-primary bg-primary-fixed hover:bg-primary-fixed-dim px-3 h-8 rounded-xl transition-colors">
+                                <span class="material-symbols-outlined" style="font-size:16px">add</span>
+                                เพิ่มรายการ
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 px-6 py-2.5 border-b border-surface-container" id="legendBar"></div>
+                    <div class="timetable-wrap p-4">
+                        <table class="timetable" id="timetableEl"></table>
+                    </div>
+                </div>
+
+                <!-- Right widgets -->
+                <div class="flex flex-col gap-4">
+
+                    <!-- Mini calendar -->
+                    <div class="bg-surface-container-lowest rounded-3xl shadow-card border border-white/60 p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-headline font-bold text-sm text-on-surface" id="calLabel"></h4>
+                            <div class="flex items-center gap-1">
+                                <button onclick="openCalEventModal(null)" title="เพิ่มกิจกรรม"
+                                    class="w-7 h-7 rounded-lg bg-primary-fixed hover:bg-primary-fixed-dim flex items-center justify-center transition-colors text-primary">
+                                    <span class="material-symbols-outlined" style="font-size:16px">add</span>
+                                </button>
+                                <button onclick="prevMonth()" class="w-7 h-7 rounded-lg hover:bg-surface-container flex items-center justify-center transition-colors">
+                                    <span class="material-symbols-outlined" style="font-size:16px">chevron_left</span>
+                                </button>
+                                <button onclick="nextMonth()" class="w-7 h-7 rounded-lg hover:bg-surface-container flex items-center justify-center transition-colors">
+                                    <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-7 text-[10px] font-black text-outline uppercase tracking-wider text-center mb-2" id="calWeekdays"></div>
+                        <div class="grid grid-cols-7 gap-0.5" id="calDays"></div>
+                        <!-- Event list under calendar -->
+                        <div id="calEventList" class="mt-3 space-y-1.5 hidden"></div>
+                    </div>
+
+                    <!-- Today panel -->
+                    <div class="bg-surface-container-lowest rounded-3xl shadow-card border border-white/60 p-5 flex-1">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="material-symbols-outlined text-primary fill-icon" style="font-size:18px">today</span>
+                            <h4 class="font-headline font-bold text-sm text-on-surface">วันนี้</h4>
+                            <span class="ml-auto text-[11px] font-semibold text-secondary" id="todayLabel"></span>
+                        </div>
+                        <div id="todayList"></div>
+                    </div>
+
+                    <!-- Quick stats -->
+                    <div class="bg-surface-container-lowest rounded-3xl shadow-card border border-white/60 p-5">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="material-symbols-outlined text-primary fill-icon" style="font-size:18px">insights</span>
+                            <h4 class="font-headline font-bold text-sm text-on-surface">สถิติ</h4>
+                        </div>
+                        <div id="statsPanel" class="space-y-2"></div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Entry list -->
+            <div class="bg-surface-container-lowest rounded-3xl shadow-card border border-white/60 overflow-hidden">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-surface-container">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary fill-icon" style="font-size:18px">list_alt</span>
+                        <h3 class="font-headline font-bold text-sm text-on-surface">รายการทั้งหมด</h3>
+                        <span class="text-[11px] font-bold text-primary bg-primary-fixed px-2 py-0.5 rounded-full" id="entryCount"></span>
+                    </div>
+                </div>
+                <div id="entryList" class="divide-y divide-surface-container"></div>
+            </div>
+
+        </div><!-- /schedContent -->
+    </div><!-- /appShell -->
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: สร้างตาราง
+════════════════════════════════════════════════════ -->
+<div id="modalNewSched" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-anim bg-surface-container-lowest w-full max-w-md rounded-3xl shadow-float border border-white/60 overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-surface-container">
+            <div>
+                <h2 class="font-headline font-bold text-on-surface">สร้างตารางใหม่</h2>
+                <p class="text-xs text-secondary mt-0.5">สร้างได้สูงสุด 3 ตารางต่อบัญชี</p>
+            </div>
+            <button onclick="closeModal('modalNewSched')" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined text-secondary" style="font-size:20px">close</span>
+            </button>
+        </div>
+        <div class="p-6 space-y-5">
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">ชื่อตาราง</label>
+                <input id="ns_name" type="text" maxlength="120" placeholder="เช่น ตารางเรียน ภาค 1/2568"
+                    class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-3">เลือก Template</label>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="tmpl-card p-4 rounded-2xl bg-surface-container border border-surface-container-high text-center" data-type="work" onclick="pickTemplate(this)">
+                        <div class="w-10 h-10 rounded-xl bg-[#fce7f3] flex items-center justify-center mx-auto mb-2">
+                            <span class="material-symbols-outlined fill-icon" style="color:#be185d;font-size:22px">work</span>
+                        </div>
+                        <p class="text-xs font-bold text-on-surface">ตารางงาน</p>
+                        <p class="text-[10px] text-secondary mt-0.5">โครงการ / งาน</p>
+                    </div>
+                    <div class="tmpl-card p-4 rounded-2xl bg-surface-container border border-surface-container-high text-center" data-type="study" onclick="pickTemplate(this)">
+                        <div class="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center mx-auto mb-2">
+                            <span class="material-symbols-outlined fill-icon" style="color:#1a146b;font-size:22px">school</span>
+                        </div>
+                        <p class="text-xs font-bold text-on-surface">ตารางเรียน</p>
+                        <p class="text-[10px] text-secondary mt-0.5">นักเรียน / นักศึกษา</p>
+                    </div>
+                    <div class="tmpl-card p-4 rounded-2xl bg-surface-container border border-surface-container-high text-center" data-type="teach" onclick="pickTemplate(this)">
+                        <div class="w-10 h-10 rounded-xl bg-[#d1fae5] flex items-center justify-center mx-auto mb-2">
+                            <span class="material-symbols-outlined fill-icon" style="color:#047857;font-size:22px">menu_book</span>
+                        </div>
+                        <p class="text-xs font-bold text-on-surface">ตารางสอน</p>
+                        <p class="text-[10px] text-secondary mt-0.5">อาจารย์ / ผู้สอน</p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-xs text-error font-semibold hidden" id="ns_err"></p>
+            <div class="flex gap-3">
+                <button onclick="closeModal('modalNewSched')" class="flex-1 h-10 rounded-xl border border-surface-container-high text-sm font-semibold text-secondary hover:bg-surface-container transition-colors">ยกเลิก</button>
+                <button onclick="submitNewSched()" id="ns_btn" class="flex-1 h-10 rounded-xl btn-primary-gradient text-white text-sm font-semibold transition-all hover:-translate-y-0.5">สร้างตาราง</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: เพิ่มรายการ
+════════════════════════════════════════════════════ -->
+<div id="modalAddEntry" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-anim bg-surface-container-lowest w-full max-w-md rounded-3xl shadow-float border border-white/60">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-surface-container">
+            <div>
+                <h2 class="font-headline font-bold text-on-surface" id="ae_title">เพิ่มรายการ</h2>
+                <p class="text-xs text-secondary mt-0.5" id="ae_sub"></p>
+            </div>
+            <button onclick="closeModal('modalAddEntry')" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined text-secondary" style="font-size:20px">close</span>
+            </button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5" id="ae_subjectLabel">ชื่อวิชา</label>
+                <input id="ae_subject" type="text" maxlength="200" placeholder="เช่น ICT311 เครือข่ายคอมพิวเตอร์"
+                    class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">เซ็คชั่น (Section)</label>
+                    <input id="ae_section" type="text" maxlength="20" placeholder="เช่น 001"
+                        class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">หน่วยกิต (Credit)</label>
+                    <input id="ae_credit" type="number" min="0" max="9" placeholder="เช่น 3"
+                        class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">วัน</label>
+                <div class="grid grid-cols-7 gap-1" id="ae_dayPicker"></div>
+            </div>
+            <!-- Time -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">เวลาเริ่ม</label>
+                    <div class="time-wrap">
+                        <div class="time-dropdown flex-1">
+                            <div id="ae_start_h_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ae_start_h_menu','ae_start_h_trigger','ae_start_h')">
+                                <span id="ae_start_h_label">08</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ae_start_h_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ae_start_h" value="08">
+                        </div>
+                        <span class="time-colon">:</span>
+                        <div class="time-dropdown" style="width:72px">
+                            <div id="ae_start_m_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ae_start_m_menu','ae_start_m_trigger','ae_start_m')">
+                                <span id="ae_start_m_label">00</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ae_start_m_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ae_start_m" value="00">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">เวลาสิ้นสุด</label>
+                    <div class="time-wrap">
+                        <div class="time-dropdown flex-1">
+                            <div id="ae_end_h_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ae_end_h_menu','ae_end_h_trigger','ae_end_h')">
+                                <span id="ae_end_h_label">10</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ae_end_h_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ae_end_h" value="10">
+                        </div>
+                        <span class="time-colon">:</span>
+                        <div class="time-dropdown" style="width:72px">
+                            <div id="ae_end_m_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ae_end_m_menu','ae_end_m_trigger','ae_end_m')">
+                                <span id="ae_end_m_label">00</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ae_end_m_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ae_end_m" value="00">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Location -->
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">ห้อง / สถานที่</label>
+                <input id="ae_location" type="text" maxlength="100" placeholder="เช่น ICT-1203 หรือ Zoom"
+                    class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <!-- Theory / Practice -->
+            <div id="ae_typeRow" class="hidden">
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">ประเภท</label>
+                <div class="flex gap-3">
+                    <button type="button" id="btn_theory"   onclick="pickType('theory')"   class="type-btn">
+                        <span class="material-symbols-outlined" style="font-size:16px">auto_stories</span> ทฤษฎี
+                    </button>
+                    <button type="button" id="btn_practice" onclick="pickType('practice')" class="type-btn">
+                        <span class="material-symbols-outlined" style="font-size:16px">science</span> ปฏิบัติ
+                    </button>
+                </div>
+            </div>
+            <p class="text-xs text-error font-semibold hidden" id="ae_err"></p>
+            <div class="flex gap-3 pt-1">
+                <button onclick="closeModal('modalAddEntry')" class="flex-1 h-10 rounded-xl border border-surface-container-high text-sm font-semibold text-secondary hover:bg-surface-container transition-colors">ยกเลิก</button>
+                <button onclick="submitEntry()" id="ae_btn" class="flex-1 h-10 rounded-xl btn-primary-gradient text-white text-sm font-semibold transition-all hover:-translate-y-0.5">บันทึก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: ยืนยันลบ
+════════════════════════════════════════════════════ -->
+<div id="modalDelete" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-anim bg-surface-container-lowest w-full max-w-sm rounded-3xl shadow-float border border-white/60 p-6 text-center">
+        <div class="w-12 h-12 rounded-2xl bg-error-container flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined text-on-error-container fill-icon" style="font-size:24px">delete</span>
+        </div>
+        <h3 class="font-headline font-bold text-on-surface mb-1" id="del_title">ยืนยันการลบ</h3>
+        <p class="text-sm text-secondary mb-6" id="del_msg">รายการนี้จะถูกลบออกถาวร</p>
+        <div class="flex gap-3">
+            <button onclick="closeModal('modalDelete')" class="flex-1 h-10 rounded-xl border border-surface-container-high text-sm font-semibold text-secondary hover:bg-surface-container transition-colors">ยกเลิก</button>
+            <button onclick="confirmDelete()" id="del_btn" class="flex-1 h-10 rounded-xl bg-error text-white text-sm font-semibold hover:opacity-90 transition-opacity">ลบออก</button>
+        </div>
+    </div>
+</div>
+<!-- ════════════════════════════════════════════════════
+     MODAL: แก้ไขรายการ
+════════════════════════════════════════════════════ -->
+<div id="modalEditEntry" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-anim bg-surface-container-lowest w-full max-w-md rounded-3xl shadow-float border border-white/60">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-surface-container">
+            <div>
+                <h2 class="font-headline font-bold text-on-surface">แก้ไขรายการ</h2>
+                <p class="text-xs text-secondary mt-0.5" id="ed_sub"></p>
+            </div>
+            <button onclick="closeModal('modalEditEntry')" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined text-secondary" style="font-size:20px">close</span>
+            </button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5" id="ed_subjectLabel">ชื่อวิชา</label>
+                <input id="ed_subject" type="text" maxlength="200" class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">เซ็คชั่น (Section)</label>
+                    <input id="ed_section" type="text" maxlength="20" placeholder="เช่น 001"
+                        class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">หน่วยกิต (Credit)</label>
+                    <input id="ed_credit" type="number" min="0" max="9" placeholder="เช่น 3"
+                        class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">วัน</label>
+                <div class="grid grid-cols-7 gap-1" id="ed_dayPicker"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">เวลาเริ่ม</label>
+                    <div class="time-wrap">
+                        <div class="time-dropdown flex-1">
+                            <div id="ed_start_h_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ed_start_h_menu','ed_start_h_trigger','ed_start_h')">
+                                <span id="ed_start_h_label">08</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ed_start_h_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ed_start_h" value="08">
+                        </div>
+                        <span class="time-colon">:</span>
+                        <div class="time-dropdown" style="width:72px">
+                            <div id="ed_start_m_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ed_start_m_menu','ed_start_m_trigger','ed_start_m')">
+                                <span id="ed_start_m_label">00</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ed_start_m_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ed_start_m" value="00">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">เวลาสิ้นสุด</label>
+                    <div class="time-wrap">
+                        <div class="time-dropdown flex-1">
+                            <div id="ed_end_h_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ed_end_h_menu','ed_end_h_trigger','ed_end_h')">
+                                <span id="ed_end_h_label">10</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ed_end_h_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ed_end_h" value="10">
+                        </div>
+                        <span class="time-colon">:</span>
+                        <div class="time-dropdown" style="width:72px">
+                            <div id="ed_end_m_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ed_end_m_menu','ed_end_m_trigger','ed_end_m')">
+                                <span id="ed_end_m_label">00</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ed_end_m_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ed_end_m" value="00">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">ห้อง / สถานที่</label>
+                <input id="ed_location" type="text" maxlength="100" class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div id="ed_typeRow" class="hidden">
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">ประเภท</label>
+                <div class="flex gap-3">
+                    <button type="button" id="ed_btn_theory"   onclick="pickEditType('theory')"   class="type-btn">
+                        <span class="material-symbols-outlined" style="font-size:16px">auto_stories</span> ทฤษฎี
+                    </button>
+                    <button type="button" id="ed_btn_practice" onclick="pickEditType('practice')" class="type-btn">
+                        <span class="material-symbols-outlined" style="font-size:16px">science</span> ปฏิบัติ
+                    </button>
+                </div>
+            </div>
+            <p class="text-xs text-error font-semibold hidden" id="ed_err"></p>
+            <div class="flex gap-3 pt-1">
+                <button onclick="closeModal('modalEditEntry')" class="flex-1 h-10 rounded-xl border border-surface-container-high text-sm font-semibold text-secondary hover:bg-surface-container transition-colors">ยกเลิก</button>
+                <button onclick="submitEditEntry()" id="ed_btn" class="flex-1 h-10 rounded-xl btn-primary-gradient text-white text-sm font-semibold transition-all hover:-translate-y-0.5">บันทึก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: รายละเอียดรายการ
+════════════════════════════════════════════════════ -->
+<div id="modalEntryDetail" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-anim bg-surface-container-lowest w-full max-w-sm rounded-3xl shadow-float border border-white/60 overflow-hidden">
+        <div id="edd_header" class="px-6 py-5 flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                    <span id="edd_type_badge" class="text-[11px] font-bold px-2.5 py-1 rounded-full"></span>
+                    <span id="edd_credit_badge" class="hidden text-[11px] font-bold px-2.5 py-1 rounded-full bg-surface-container text-secondary"></span>
+                </div>
+                <h2 class="font-headline font-bold text-lg text-on-surface leading-snug" id="edd_subject"></h2>
+            </div>
+            <button onclick="closeModal('modalEntryDetail')" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-surface-container transition-colors shrink-0 mt-0.5">
+                <span class="material-symbols-outlined text-secondary" style="font-size:20px">close</span>
+            </button>
+        </div>
+        <div class="px-6 pb-6 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-surface-container rounded-2xl p-3">
+                    <p class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-1">วัน</p>
+                    <p class="font-bold text-sm text-on-surface" id="edd_day"></p>
+                </div>
+                <div class="bg-surface-container rounded-2xl p-3">
+                    <p class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-1">เวลา</p>
+                    <p class="font-bold text-sm text-on-surface" id="edd_time"></p>
+                </div>
+            </div>
+            <div id="edd_location_row" class="hidden bg-surface-container rounded-2xl p-3">
+                <p class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-1">ห้อง / สถานที่</p>
+                <p class="font-bold text-sm text-on-surface" id="edd_location"></p>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button onclick="editFromDetail()" id="edd_edit_btn"
+                    class="flex-1 h-10 rounded-xl border border-surface-container-high text-sm font-semibold text-secondary hover:bg-surface-container transition-colors flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined" style="font-size:16px">edit</span> แก้ไข
+                </button>
+                <button onclick="deleteFromDetail()" id="edd_del_btn"
+                    class="flex-1 h-10 rounded-xl border border-error-container text-sm font-semibold text-on-error-container hover:bg-error-container transition-colors flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined" style="font-size:16px">delete</span> ลบ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: นำเข้าด้วย AI
+════════════════════════════════════════════════════ -->
+<div id="modalAIImport" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-anim bg-surface-container-lowest w-full max-w-lg rounded-3xl shadow-float border border-white/60">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-5 border-b border-surface-container">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center shadow-sm">
+                    <span class="material-symbols-outlined text-white" style="font-size:20px">auto_awesome</span>
+                </div>
+                <div>
+                    <h2 class="font-headline font-bold text-on-surface">นำเข้าด้วย AI</h2>
+                    <p class="text-xs text-secondary mt-0.5">วาง/พิมพ์ข้อมูลตารางเรียน แล้ว AI จะจัดการให้เอง</p>
+                </div>
+            </div>
+            <button onclick="closeModal('modalAIImport')" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined text-secondary" style="font-size:20px">close</span>
+            </button>
+        </div>
+        <!-- Step 1: input -->
+        <div id="ai_step1" class="p-6 space-y-4">
+            <div class="rounded-2xl bg-primary-fixed border border-[#c3c0ff] p-3 flex gap-2.5">
+                <span class="material-symbols-outlined text-primary mt-0.5" style="font-size:16px">info</span>
+                <p class="text-xs text-primary leading-relaxed">คัดลอกข้อความจากตารางเรียน (เช่น จากระบบลงทะเบียน) แล้ววางในช่องด้านล่าง AI จะแปลงและเพิ่มลงตารางให้อัตโนมัติ</p>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">วางข้อมูลตารางเรียนที่นี่</label>
+                <textarea id="ai_input" rows="10" placeholder="ตัวอย่าง:&#10;ENG112  Credit 2  Lab 001  F  0900-1130  อาคาร 1 ชั้น 12 ห้อง 1201&#10;ENG213  Credit 2  Lab 003  T  0900-1130  อาคาร 11 ชั้น 09 ห้อง 0908&#10;..."
+                    class="input-inset w-full rounded-xl px-4 py-3 text-sm font-mono resize-none"></textarea>
+            </div>
+            <p class="text-xs text-error font-semibold hidden" id="ai_err"></p>
+            <div class="flex gap-3 pt-1">
+                <button onclick="closeModal('modalAIImport')" class="flex-1 h-10 rounded-xl border border-surface-container-high text-sm font-semibold text-secondary hover:bg-surface-container transition-colors">ยกเลิก</button>
+                <button onclick="runAIImport()" id="ai_btn"
+                    class="flex-1 h-10 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-500 text-white text-sm font-semibold transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span>
+                    วิเคราะห์และนำเข้า
+                </button>
+            </div>
+        </div>
+        <!-- Step 2: preview -->
+        <div id="ai_step2" class="hidden p-6 space-y-4">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="material-symbols-outlined text-green-600" style="font-size:18px">check_circle</span>
+                <p class="text-sm font-bold text-on-surface">AI พบ <span id="ai_found_count">0</span> รายการ — ตรวจสอบก่อนนำเข้า</p>
+            </div>
+            <div id="ai_preview_list" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
+            <p class="text-xs text-error font-semibold hidden" id="ai_save_err"></p>
+            <div class="flex gap-3 pt-1">
+                <button onclick="aiBack()" class="flex-1 h-10 rounded-xl border border-surface-container-high text-sm font-semibold text-secondary hover:bg-surface-container transition-colors">← แก้ไขข้อมูล</button>
+                <button onclick="confirmAIImport()" id="ai_confirm_btn"
+                    class="flex-1 h-10 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-500 text-white text-sm font-semibold transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined" style="font-size:16px">add_task</span>
+                    นำเข้าทั้งหมด
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════
+     MODAL: กิจกรรมในปฏิทิน (CalendarEvent)
+════════════════════════════════════════════════════ -->
+<div id="modalCalEvent" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-anim bg-surface-container-lowest w-full max-w-md rounded-3xl shadow-float border border-white/60 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between px-6 py-5 border-b border-surface-container sticky top-0 bg-surface-container-lowest z-10">
+            <div>
+                <h2 class="font-headline font-bold text-on-surface" id="ce_title">เพิ่มกิจกรรม</h2>
+                <p class="text-xs text-secondary mt-0.5">ปฏิทินส่วนตัว</p>
+            </div>
+            <button onclick="closeModal('modalCalEvent')" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-surface-container transition-colors">
+                <span class="material-symbols-outlined text-secondary" style="font-size:20px">close</span>
+            </button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">ชื่อกิจกรรม <span class="text-error">*</span></label>
+                <input id="ce_titleInput" type="text" maxlength="200" placeholder="เช่น สอบกลางภาค, นัดหมอ" class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">วันที่ <span class="text-error">*</span></label>
+                <input id="ce_date" type="date" class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">เวลาเริ่ม</label>
+                    <div class="time-wrap">
+                        <div class="time-dropdown flex-1">
+                            <div id="ce_start_h_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ce_start_h_menu','ce_start_h_trigger','ce_start_h')">
+                                <span id="ce_start_h_label">—</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ce_start_h_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ce_start_h" value="">
+                        </div>
+                        <span class="time-colon">:</span>
+                        <div class="time-dropdown" style="width:72px">
+                            <div id="ce_start_m_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ce_start_m_menu','ce_start_m_trigger','ce_start_m')">
+                                <span id="ce_start_m_label">—</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ce_start_m_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ce_start_m" value="">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">เวลาสิ้นสุด</label>
+                    <div class="time-wrap">
+                        <div class="time-dropdown flex-1">
+                            <div id="ce_end_h_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ce_end_h_menu','ce_end_h_trigger','ce_end_h')">
+                                <span id="ce_end_h_label">—</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ce_end_h_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ce_end_h" value="">
+                        </div>
+                        <span class="time-colon">:</span>
+                        <div class="time-dropdown" style="width:72px">
+                            <div id="ce_end_m_trigger" class="time-dropdown-trigger" onclick="toggleTimeDropdown('ce_end_m_menu','ce_end_m_trigger','ce_end_m')">
+                                <span id="ce_end_m_label">—</span>
+                                <span class="material-symbols-outlined td-chevron">expand_more</span>
+                            </div>
+                            <div id="ce_end_m_menu" class="time-dropdown-menu"></div>
+                            <input type="hidden" id="ce_end_m" value="">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">สถานที่</label>
+                <input id="ce_location" type="text" maxlength="100" placeholder="เช่น ห้อง 101" class="input-inset w-full rounded-xl px-4 py-2.5 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">รายละเอียด</label>
+                <textarea id="ce_detail" rows="2" maxlength="500" placeholder="บันทึกเพิ่มเติม..." class="input-inset w-full rounded-xl px-4 py-2.5 text-sm resize-none"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">สี</label>
+                    <div class="flex gap-2 flex-wrap" id="ce_colorPicker"></div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">แจ้งเตือนก่อน</label>
+                    <select id="ce_remind" class="input-inset w-full rounded-xl px-3 py-2.5 text-sm">
+                        <option value="0">ไม่แจ้งเตือน</option>
+                        <option value="15" selected>15 นาที</option>
+                        <option value="30">30 นาที</option>
+                        <option value="60">1 ชั่วโมง</option>
+                        <option value="1440">1 วัน</option>
+                    </select>
+                </div>
+            </div>
+            <p class="text-xs text-error font-semibold hidden" id="ce_err"></p>
+            <div class="flex gap-3 pt-1">
+                <button onclick="closeModal('modalCalEvent')" class="flex-1 h-10 rounded-xl border border-surface-container-high text-sm font-semibold text-secondary hover:bg-surface-container transition-colors">ยกเลิก</button>
+                <button onclick="submitCalEvent()" id="ce_btn" class="flex-1 h-10 rounded-xl btn-primary-gradient text-white text-sm font-semibold transition-all hover:-translate-y-0.5">บันทึก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: รายละเอียด CalendarEvent -->
+<div id="modalCalEventDetail" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-anim bg-surface-container-lowest w-full max-w-sm rounded-3xl shadow-float border border-white/60 overflow-hidden">
+        <div id="ced_header" class="px-6 py-5 flex items-start justify-between gap-3 rounded-t-3xl">
+            <div class="flex-1 min-w-0">
+                <p class="text-[11px] font-bold text-white/80 mb-1" id="ced_date"></p>
+                <h2 class="font-headline font-bold text-lg text-white leading-snug" id="ced_titleText"></h2>
+            </div>
+            <button onclick="closeModal('modalCalEventDetail')" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/20 transition-colors shrink-0 mt-0.5">
+                <span class="material-symbols-outlined text-white" style="font-size:20px">close</span>
+            </button>
+        </div>
+        <div class="px-6 pb-6 space-y-3 pt-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-surface-container rounded-2xl p-3 hidden" id="ced_timeBox">
+                    <p class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-1">เวลา</p>
+                    <p class="font-bold text-sm text-on-surface" id="ced_time"></p>
+                </div>
+                <div class="bg-surface-container rounded-2xl p-3 hidden" id="ced_locationBox">
+                    <p class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-1">สถานที่</p>
+                    <p class="font-bold text-sm text-on-surface" id="ced_location"></p>
+                </div>
+            </div>
+            <div class="bg-surface-container rounded-2xl p-3 hidden" id="ced_detailBox">
+                <p class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-1">รายละเอียด</p>
+                <p class="text-sm text-on-surface whitespace-pre-wrap" id="ced_detail"></p>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button onclick="editCalEvent()" class="flex-1 h-10 rounded-xl border border-surface-container-high text-sm font-semibold text-secondary hover:bg-surface-container transition-colors flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined" style="font-size:16px">edit</span> แก้ไข
+                </button>
+                <button onclick="deleteCalEvent()" class="flex-1 h-10 rounded-xl border border-error-container text-sm font-semibold text-on-error-container hover:bg-error-container transition-colors flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined" style="font-size:16px">delete</span> ลบ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+// ════════════════════════════════════════════════════════════
+//  KanFlow Schedule – full API-backed JS
+// ════════════════════════════════════════════════════════════
+const CSRF = '{{ csrf_token }}';
+const API  = {
+    schedules:    '/schedule/api/schedules/',
+    schedDel: id => `/schedule/api/schedules/${id}/`,
+    entries:  id => `/schedule/api/schedules/${id}/entries/`,
+    entryDel: id => `/schedule/api/entries/${id}/`,
+    notify:       '/schedule/api/notify/',
+};
+
+// Calendar Events API (declared later near usage)
+
+const DAYS_TH   = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+const DAYS_FULL = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+
+// App state
+let schedules  = [];
+let activeId   = null;
+let calY = new Date().getFullYear(), calM = new Date().getMonth();
+
+// Modal state
+let selTemplate = null, selDay = null, selType = 'theory';
+let delTarget   = null;  // {kind:'sched'|'entry', id}
+
+// ── Fetch helpers ─────────────────────────────────────────────
+async function apiFetch(url, method='GET', body=null) {
+    const opts = { method, headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(url, opts);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Request failed');
+    return j;
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────
+(async () => {
+    try {
+        const data = await apiFetch(API.schedules);
+        schedules = data.schedules;
+        activeId  = schedules[0]?.id ?? null;
+    } catch { schedules = []; }
+    document.getElementById('pageLoader').classList.add('hidden');
+    document.getElementById('appShell').classList.remove('hidden');
+    render();
+    renderCalendar();
+})();
+
+// ════════════════════════════════════════════════════════════
+//  RENDER HELPERS
+// ════════════════════════════════════════════════════════════
+function getActive() { return schedules.find(s => s.id === activeId); }
+
+function render() {
+    renderTabBar();
+    const sched = getActive();
+    if (!sched) {
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('schedContent').classList.add('hidden');
+        document.getElementById('btnNewSched').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('schedContent').classList.remove('hidden');
+    renderSummary(sched);
+    renderLegend(sched);
+    renderTimetable(sched);
+    renderToday(sched);
+    renderStats(sched);
+    renderEntryList(sched);
+    document.getElementById('ttTitle').textContent = sched.name;
+    document.getElementById('btnNewSched').classList.toggle('hidden', schedules.length >= 3);
+    renderCalendar(); // อัปเดต dot indicator เมื่อเปลี่ยนตาราง
+}
+
+// ── Tab bar ───────────────────────────────────────────────────
+function renderTabBar() {
+    const bar = document.getElementById('tabBar');
+    const ICON = {work:'work', study:'school', teach:'menu_book'};
+    bar.innerHTML = '';
+
+    schedules.forEach(s => {
+        const act = s.id === activeId;
+        const btn = document.createElement('button');
+        btn.className = `flex items-center gap-2 px-4 h-10 rounded-xl text-sm font-semibold transition-all
+            ${act ? 'btn-primary-gradient text-white shadow-primary' : 'bg-surface-container-lowest border border-surface-container-high text-on-surface hover:bg-surface-container'}`;
+        btn.innerHTML = `<span class="material-symbols-outlined fill-icon" style="font-size:16px">${ICON[s.type]}</span>${s.name}`;
+        btn.onclick = () => { activeId = s.id; render(); loadCalEvents(); };
+        bar.appendChild(btn);
+    });
+
+    if (activeId) {
+        const del = document.createElement('button');
+        del.className = 'w-9 h-9 flex items-center justify-center rounded-xl border border-error-container text-on-error-container hover:bg-error-container transition-colors';
+        del.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">delete</span>';
+        del.title = 'ลบตาราง';
+        del.onclick = openDeleteSchedModal;
+        bar.appendChild(del);
+    }
+
+    if (schedules.length < 3) {
+        const add = document.createElement('button');
+        add.className = 'flex items-center gap-1.5 px-3 h-10 rounded-xl border border-dashed border-outline-variant text-secondary text-sm font-semibold hover:bg-surface-container transition-colors';
+        add.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">add</span> เพิ่มตาราง';
+        add.onclick = openNewSchedModal;
+        bar.appendChild(add);
+    }
+}
+
+// ── Summary ───────────────────────────────────────────────────
+function renderSummary(sched) {
+    const entries = sched.entries || [];
+    const todayD  = new Date().getDay();
+    const todayCnt= entries.filter(e => e.day === todayD).length;
+    const days    = new Set(entries.map(e=>e.day)).size;
+    const totalH  = entries.reduce((acc,e)=>{
+        const [sh,sm] = e.start.split(':').map(Number);
+        const [eh,em] = e.end.split(':').map(Number);
+        return acc + ((eh*60+em)-(sh*60+sm))/60;
+    },0);
+    const isAcademic = sched.type !== 'work';
+
+    // นับหน่วยกิตรวม: unique รายวิชา (subject) เพื่อไม่นับซ้ำ Lec+Lab
+    const creditMap = {};
+    if (isAcademic) {
+        entries.forEach(e => {
+            if (e.credit != null && !(e.subject in creditMap)) {
+                creditMap[e.subject] = e.credit;
+            }
+        });
+    }
+    const totalCredit = Object.values(creditMap).reduce((a, b) => a + b, 0);
+
+    const cards = [
+        {label:'รายการทั้งหมด', value: entries.length,            icon:'format_list_bulleted', cls:'bg-primary-fixed text-primary'},
+        {label:'วันที่มีกิจกรรม',value: days+' วัน',              icon:'calendar_month',       cls:'bg-[#d1fae5] text-[#047857]'},
+        {label:'ชม./สัปดาห์',   value: totalH.toFixed(1)+' ชม.', icon:'schedule',             cls:'bg-[#fce7f3] text-[#be185d]'},
+        {label:'วันนี้',         value: todayCnt+' รายการ',       icon:'today',                cls:'bg-secondary-container text-secondary'},
+        ...(isAcademic ? [{label:'หน่วยกิตรวม', value: totalCredit+' หน่วยกิต', icon:'school', cls:'bg-[#fef9c3] text-[#a16207]'}] : []),
+    ];
+
+    const gridEl = document.getElementById('summaryStrip');
+    gridEl.className = `grid gap-2 sm:gap-3 ${isAcademic ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'} mb-4 sm:mb-6`;
+    document.getElementById('summaryStrip').innerHTML = cards.map(c=>`
+        <div class="bg-surface-container-lowest rounded-2xl shadow-card border border-white/60 px-5 py-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl ${c.cls} flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined fill-icon" style="font-size:20px">${c.icon}</span>
+            </div>
+            <div>
+                <p class="text-lg font-headline font-extrabold text-on-surface leading-none">${c.value}</p>
+                <p class="text-[11px] text-secondary mt-0.5">${c.label}</p>
+            </div>
+        </div>`).join('');
+}
+
+// ── Legend ────────────────────────────────────────────────────
+function renderLegend(sched) {
+    const bar = document.getElementById('legendBar');
+    if (sched.type === 'work') {
+        bar.innerHTML = `<span class="flex items-center gap-1.5 text-xs font-semibold text-secondary"><span class="w-3 h-3 rounded-sm inline-block" style="background:linear-gradient(135deg,#be185d,#9d174d)"></span>งาน/โครงการ</span>`;
+    } else {
+        bar.innerHTML = `
+            <span class="flex items-center gap-1.5 text-xs font-semibold text-secondary"><span class="w-3 h-3 rounded-sm inline-block" style="background:linear-gradient(135deg,#1a146b,#3730a3)"></span>ทฤษฎี</span>
+            <span class="flex items-center gap-1.5 text-xs font-semibold text-secondary"><span class="w-3 h-3 rounded-sm inline-block" style="background:linear-gradient(135deg,#047857,#065f46)"></span>ปฏิบัติ</span>`;
+    }
+}
+
+// ── Timetable ─────────────────────────────────────────────────
+function renderTimetable(sched) {
+    const entries  = sched.entries || [];
+    const todayIdx = new Date().getDay();
+
+    const startHours = entries.map(e=>parseInt(e.start));
+    const endHours   = entries.map(e=>Math.ceil(parseInt(e.end)));
+    const minH = startHours.length ? Math.min(...startHours,8)  : 8;
+    const maxH = endHours.length   ? Math.max(...endHours,  18) : 18;
+    const cols = Array.from({length:maxH-minH},(_,i)=>minH+i);
+
+    let html = '<thead><tr><th class="day-col" style="background:#f7f9fb;border:none"></th>';
+    cols.forEach(h => html += `<th>${String(h).padStart(2,'0')}:00</th>`);
+    html += '</tr></thead><tbody>';
+
+    [1,2,3,4,5,6,0].forEach(d => {
+        const isToday = d === todayIdx;
+        html += `<tr><td class="day-label ${isToday?'today-label':''}">${DAYS_TH[d]}</td>`;
+        const dayEntries = entries.filter(e=>e.day===d);
+        cols.forEach(h => {
+            html += `<td class="${isToday?'today-col':''}">`;
+            dayEntries.forEach(e => {
+                const [sh,sm] = e.start.split(':').map(Number);
+                const [eh,em] = e.end.split(':').map(Number);
+                if (sh !== h) return;
+                const durH = ((eh*60+em)-(sh*60+sm))/60;
+                const w    = durH*100;
+                const off  = (sm/60)*100;
+                const cls  = sched.type==='work' ? 'work' : (e.entry_type==='practice'?'practice':'theory');
+                html += `<div class="sched-block ${cls}"
+                    style="left:calc(${off}% + 3px);width:calc(${w}% - 6px)"
+                    onclick="openEntryDetail(${e.id})"
+                    title="${e.subject} · ${e.start}–${e.end}${e.location?' · '+e.location:''}">
+                    <span class="b-title">${e.subject}</span>
+                    <span class="b-meta">${e.location||e.start+'–'+e.end}</span>
+                </div>`;
+            });
+            html += '</td>';
+        });
+        html += '</tr>';
+    });
+    html += '</tbody>';
+    document.getElementById('timetableEl').innerHTML = html;
+}
+
+// ── Today ─────────────────────────────────────────────────────
+function renderToday(sched) {
+    const today = new Date().getDay();
+    document.getElementById('todayLabel').textContent = DAYS_FULL[today];
+    const entries = (sched.entries||[]).filter(e=>e.day===today).sort((a,b)=>a.start.localeCompare(b.start));
+    const list = document.getElementById('todayList');
+    if (!entries.length) {
+        list.innerHTML = '<p class="text-xs text-secondary text-center py-4">ไม่มีรายการวันนี้ 🎉</p>';
+        return;
+    }
+    list.innerHTML = entries.map(e => {
+        const cls = sched.type==='work' ? 'bg-[#fce7f3] border-[#be185d]'
+                  : e.entry_type==='practice' ? 'bg-[#d1fae5] border-[#047857]'
+                  : 'bg-primary-fixed border-primary';
+        const dot = sched.type==='work' ? 'bg-[#be185d]'
+                  : e.entry_type==='practice' ? 'bg-[#047857]' : 'bg-primary';
+        return `<div class="flex items-start gap-2.5 p-2.5 rounded-xl ${cls} border-l-2 mb-2">
+            <span class="w-2 h-2 rounded-full ${dot} mt-1 shrink-0"></span>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-on-surface truncate">${e.subject}</p>
+                <p class="text-[10px] text-secondary">${e.start}–${e.end}${e.location?' · '+e.location:''}</p>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Stats ─────────────────────────────────────────────────────
+function renderStats(sched) {
+    const entries = sched.entries || [];
+    const byDay = DAYS_TH.map((_,i)=> ({day:i, count:entries.filter(e=>e.day===i).length}))
+                         .filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
+    const maxCnt = byDay[0]?.count || 1;
+    document.getElementById('statsPanel').innerHTML = byDay.slice(0,5).map(x=>`
+        <div class="flex items-center gap-2">
+            <span class="text-[10px] font-black text-secondary w-6 shrink-0">${DAYS_TH[x.day]}</span>
+            <div class="flex-1 h-2 rounded-full bg-surface-container overflow-hidden">
+                <div class="h-full rounded-full bg-gradient-to-r from-primary to-primary-container transition-all" style="width:${(x.count/maxCnt)*100}%"></div>
+            </div>
+            <span class="text-[10px] font-bold text-secondary">${x.count}</span>
+        </div>`).join('') || '<p class="text-xs text-secondary text-center py-2">ยังไม่มีข้อมูล</p>';
+}
+
+// ── Entry list ────────────────────────────────────────────────
+function renderEntryList(sched) {
+    const entries = [...(sched.entries||[])].sort((a,b)=> a.day!==b.day ? a.day-b.day : a.start.localeCompare(b.start));
+    document.getElementById('entryCount').textContent = entries.length || '';
+    const list = document.getElementById('entryList');
+    if (!entries.length) {
+        list.innerHTML = '<div class="px-6 py-10 text-center text-sm text-secondary">ยังไม่มีรายการ — กด "เพิ่มรายการ" เพื่อเริ่มต้น</div>';
+        return;
+    }
+    list.innerHTML = entries.map(e => {
+        const tag = sched.type!=='work' ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${e.entry_type==='practice'?'bg-[#d1fae5] text-[#047857]':'bg-primary-fixed text-primary'}">${e.entry_type==='practice'?'ปฏิบัติ':'ทฤษฎี'}</span>` : '';
+        const creditTag = e.credit != null ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-container text-secondary">${e.credit} หน่วยกิต</span>` : '';
+        return `<div class="flex items-center gap-4 px-6 py-3.5 hover:bg-surface-container-low transition-colors group cursor-pointer" onclick="openEntryDetail(${e.id})">
+            <div class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center shrink-0 text-[10px] font-black text-secondary">${DAYS_TH[e.day]}</div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <p class="text-sm font-semibold text-on-surface truncate">${e.subject}</p>${tag}${creditTag}
+                </div>
+                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span class="time-badge"><span class="material-symbols-outlined" style="font-size:11px">schedule</span>${e.start}–${e.end}</span>
+                    ${e.location?`<span class="time-badge"><span class="material-symbols-outlined" style="font-size:11px">location_on</span>${e.location}</span>`:''}
+                </div>
+            </div>
+            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                <button onclick="event.stopPropagation();openEditEntryModal(${e.id})" title="แก้ไข"
+                    class="w-7 h-7 rounded-lg hover:bg-primary-fixed flex items-center justify-center transition-colors text-primary">
+                    <span class="material-symbols-outlined" style="font-size:15px">edit</span>
+                </button>
+                <button onclick="event.stopPropagation();openDeleteEntryModal(${e.id})" title="ลบ"
+                    class="w-7 h-7 rounded-lg hover:bg-error-container flex items-center justify-center transition-colors text-on-error-container">
+                    <span class="material-symbols-outlined" style="font-size:15px">delete</span>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+//  MINI CALENDAR
+// ════════════════════════════════════════════════════════════
+function renderCalendar() {
+    const MONTHS_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const today = new Date();
+    document.getElementById('calWeekdays').innerHTML = DAYS_TH.map(d=>`<div class="py-1">${d}</div>`).join('');
+    document.getElementById('calLabel').textContent = `${MONTHS_TH[calM]} ${calY+543}`;
+    const first = new Date(calY,calM,1).getDay();
+    const total = new Date(calY,calM+1,0).getDate();
+
+    // สร้าง set ของ day-of-week ที่มี entries (สำหรับ dot indicator)
+    const sched = getActive();
+    const activeDayOfWeek = new Set((sched?.entries||[]).map(e=>e.day));
+
+    let html = '';
+    for(let i=0;i<first;i++) html += '<div></div>';
+    for(let d=1;d<=total;d++){
+        const isToday = d===today.getDate()&&calM===today.getMonth()&&calY===today.getFullYear();
+        const dow = new Date(calY,calM,d).getDay(); // 0=Sun
+        const hasSched = activeDayOfWeek.has(dow);
+        html += `<div class="relative flex flex-col items-center" onclick="calDayClick(${d},${calY},${calM})">
+            <div class="w-7 h-7 flex items-center justify-center rounded-full text-xs font-semibold cursor-pointer transition-all
+                ${isToday ? 'btn-primary-gradient text-white shadow-sm' : 'text-on-surface hover:bg-primary-fixed hover:text-primary'}">${d}</div>
+            ${hasSched && !isToday ? '<span class="absolute bottom-0 w-1 h-1 rounded-full bg-primary opacity-70"></span>' : ''}
+        </div>`;
+    }
+    document.getElementById('calDays').innerHTML = html;
+}
+function prevMonth(){ if(--calM<0){calM=11;calY--;} renderCalendar(); }
+function nextMonth(){ if(++calM>11){calM=0;calY++;} renderCalendar(); }
+
+// กดวันในปฏิทิน → เปิด modal เพิ่มรายการ pre-fill วันนั้น
+function calDayClick(d, y, m) {
+    const sched = getActive();
+    if (!sched) { alert('กรุณาเลือกตารางก่อน'); return; }
+    const dow = new Date(y, m, d).getDay(); // 0=Sun…6=Sat
+    openAddEntryModal();
+    // pre-select วัน
+    pickDay(dow);
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODAL: สร้างตาราง
+// ════════════════════════════════════════════════════════════
+function openNewSchedModal() {
+    if(schedules.length>=3){alert('สร้างได้สูงสุด 3 ตาราง');return;}
+    selTemplate=null;
+    document.getElementById('ns_name').value='';
+    document.getElementById('ns_err').classList.add('hidden');
+    document.querySelectorAll('.tmpl-card').forEach(c=>c.classList.remove('selected'));
+    openModal('modalNewSched');
+}
+function pickTemplate(el) {
+    document.querySelectorAll('.tmpl-card').forEach(c=>c.classList.remove('selected'));
+    el.classList.add('selected');
+    selTemplate = el.dataset.type;
+}
+async function submitNewSched() {
+    const name = document.getElementById('ns_name').value.trim();
+    const err  = document.getElementById('ns_err');
+    if(!name||!selTemplate){ err.textContent='กรุณากรอกชื่อและเลือก Template'; err.classList.remove('hidden'); return; }
+    const btn = document.getElementById('ns_btn');
+    btn.disabled=true; btn.textContent='กำลังสร้าง...';
+    try {
+        const data = await apiFetch(API.schedules,'POST',{name,type:selTemplate});
+        schedules.push(data.schedule);
+        activeId = data.schedule.id;
+        closeModal('modalNewSched');
+        render();
+        dispatchNavRefresh();
+    } catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
+    finally{ btn.disabled=false; btn.textContent='สร้างตาราง'; }
+}
+
+// ════════════════════════════════════════════════════════════
+//  TIME DROPDOWN HELPERS (custom dropdown replacing <select>)
+// ════════════════════════════════════════════════════════════
+const TIME_HOURS   = Array.from({length:24}, (_,i) => String(i).padStart(2,'0'));
+const TIME_MINUTES = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+
+function buildTimeSelects(hId, mId, defaultHH='08', defaultMM='00') {
+    _buildTimePicker(hId, TIME_HOURS,   defaultHH);
+    _buildTimePicker(mId, TIME_MINUTES, defaultMM);
+}
+
+function _buildTimePicker(inputId, options, defaultVal) {
+    const hiddenInput = document.getElementById(inputId);
+    if (!hiddenInput) return;
+    const menuId    = inputId + '_menu';
+    const triggerId = inputId + '_trigger';
+    const labelId   = inputId + '_label';
+    const menu    = document.getElementById(menuId);
+    const labelEl = document.getElementById(labelId);
+    if (!menu) return;
+
+    const val = options.includes(defaultVal) ? defaultVal : options[0];
+    hiddenInput.value = val;
+    if (labelEl) labelEl.textContent = val;
+
+    menu.innerHTML = options.map(v =>
+        `<div class="time-dropdown-item${v===val?' selected':''}" onclick="selectTimeOption('${inputId}','${v}')">${v}</div>`
+    ).join('');
+}
+
+function selectTimeOption(inputId, val) {
+    const hiddenInput = document.getElementById(inputId);
+    const labelEl     = document.getElementById(inputId + '_label');
+    const menu        = document.getElementById(inputId + '_menu');
+    const trigger     = document.getElementById(inputId + '_trigger');
+    if (!hiddenInput) return;
+    hiddenInput.value = val;
+    if (labelEl) labelEl.textContent = val;
+    // update selected highlight
+    menu.querySelectorAll('.time-dropdown-item').forEach(el => {
+        el.classList.toggle('selected', el.textContent.trim() === val);
+    });
+    closeAllTimeDropdowns();
+}
+
+function toggleTimeDropdown(menuId, triggerId, inputId) {
+    const menu    = document.getElementById(menuId);
+    const trigger = document.getElementById(triggerId);
+    const isOpen  = menu.classList.contains('show');
+    closeAllTimeDropdowns();
+    if (!isOpen) {
+        // Detect if there's room below; if not, open upward
+        const rect = trigger.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        menu.classList.toggle('drop-up', spaceBelow < 200);
+        menu.classList.add('show');
+        trigger.classList.add('open');
+        // scroll selected item into view
+        const selected = menu.querySelector('.selected');
+        if (selected) selected.scrollIntoView({block:'nearest'});
+    }
+}
+
+function closeAllTimeDropdowns() {
+    document.querySelectorAll('.time-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+    document.querySelectorAll('.time-dropdown-trigger.open').forEach(t => t.classList.remove('open'));
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.time-dropdown')) closeAllTimeDropdowns();
+});
+
+function getTimeVal(hId, mId) {
+    return document.getElementById(hId).value + ':' + document.getElementById(mId).value;
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODAL: เพิ่มรายการ
+// ════════════════════════════════════════════════════════════
+function openAddEntryModal() {
+    const sched = getActive(); if(!sched) return;
+    selDay=null; selType='theory';
+    document.getElementById('ae_subject').value='';
+    document.getElementById('ae_section').value='';
+    document.getElementById('ae_credit').value='';
+    buildTimeSelects('ae_start_h','ae_start_m','08','00');
+    buildTimeSelects('ae_end_h','ae_end_m','10','00');
+    document.getElementById('ae_location').value='';
+    document.getElementById('ae_err').classList.add('hidden');
+    document.getElementById('ae_title').textContent = 'เพิ่มรายการ';
+    document.getElementById('ae_sub').textContent   = sched.name;
+    const lbl = {work:'ชื่องาน / โครงการ',study:'ชื่อวิชา',teach:'ชื่อวิชา / กลุ่ม'};
+    document.getElementById('ae_subjectLabel').textContent = lbl[sched.type];
+    // day picker
+    document.getElementById('ae_dayPicker').innerHTML = DAYS_TH.map((d,i)=>
+        `<button type="button" class="dp-btn" id="dp_${i}" onclick="pickDay(${i})">${d}</button>`).join('');
+    // type toggle
+    const tr = document.getElementById('ae_typeRow');
+    if(sched.type!=='work'){ tr.classList.remove('hidden'); pickType('theory'); }
+    else tr.classList.add('hidden');
+    openModal('modalAddEntry');
+}
+function pickDay(i) {
+    selDay=i;
+    DAYS_TH.forEach((_,j)=>{ const b=document.getElementById('dp_'+j); if(b) b.className='dp-btn'+(j===i?' active':''); });
+}
+function pickType(t) {
+    selType=t;
+    document.getElementById('btn_theory').className   = 'type-btn'+(t==='theory'  ?' active-theory':'');
+    document.getElementById('btn_practice').className = 'type-btn'+(t==='practice'?' active-practice':'');
+}
+async function submitEntry() {
+    const sched   = getActive(); if(!sched) return;
+    const subject = document.getElementById('ae_subject').value.trim();
+    const start   = getTimeVal('ae_start_h','ae_start_m');
+    const end     = getTimeVal('ae_end_h','ae_end_m');
+    const location= document.getElementById('ae_location').value.trim();
+    const err     = document.getElementById('ae_err');
+    if(!subject||selDay===null){
+        err.textContent='กรุณากรอกข้อมูลให้ครบถ้วน'; err.classList.remove('hidden'); return;
+    }
+    if(start >= end){
+        err.textContent='เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'; err.classList.remove('hidden'); return;
+    }
+    const btn = document.getElementById('ae_btn');
+    btn.disabled=true; btn.textContent='กำลังบันทึก...';
+    try {
+        const creditVal = parseInt(document.getElementById('ae_credit').value) || null;
+        const sectionVal = document.getElementById('ae_section').value.trim();
+        const data = await apiFetch(API.entries(sched.id),'POST',{
+            subject, day:selDay, start, end, location, entry_type: selType, credit: creditVal, section: sectionVal
+        });
+        sched.entries = [...(sched.entries||[]), data.entry];
+        closeModal('modalAddEntry');
+        render();
+    } catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
+    finally{ btn.disabled=false; btn.textContent='บันทึก'; }
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODAL: แก้ไขรายการ
+// ════════════════════════════════════════════════════════════
+let editTarget = null; // {entry, sched}
+let editSelDay = null, editSelType = 'theory';
+
+function openEditEntryModal(entryId) {
+    const sched = getActive(); if(!sched) return;
+    const entry = (sched.entries||[]).find(e=>e.id===entryId); if(!entry) return;
+    editTarget = {entry, sched};
+    editSelDay = entry.day;
+    editSelType = entry.entry_type || 'theory';
+
+    const lbl = {work:'ชื่องาน / โครงการ',study:'ชื่อวิชา',teach:'ชื่อวิชา / กลุ่ม'};
+    document.getElementById('ed_subjectLabel').textContent = lbl[sched.type];
+    document.getElementById('ed_sub').textContent = sched.name;
+    document.getElementById('ed_subject').value = entry.subject;
+    document.getElementById('ed_section').value  = entry.section || '';
+    document.getElementById('ed_credit').value  = entry.credit != null ? entry.credit : '';
+    document.getElementById('ed_location').value = entry.location||'';
+
+    const [sh,sm] = entry.start.split(':');
+    const [eh,em] = entry.end.split(':');
+    buildTimeSelects('ed_start_h','ed_start_m', sh, sm);
+    buildTimeSelects('ed_end_h','ed_end_m', eh, em);
+
+    // day picker
+    document.getElementById('ed_dayPicker').innerHTML = DAYS_TH.map((d,i)=>
+        `<button type="button" class="dp-btn${i===editSelDay?' active':''}" id="edp_${i}" onclick="pickEditDay(${i})">${d}</button>`).join('');
+
+    // type toggle
+    const tr = document.getElementById('ed_typeRow');
+    if(sched.type!=='work'){ tr.classList.remove('hidden'); pickEditType(editSelType); }
+    else tr.classList.add('hidden');
+
+    document.getElementById('ed_err').classList.add('hidden');
+    openModal('modalEditEntry');
+}
+function pickEditDay(i) {
+    editSelDay=i;
+    DAYS_TH.forEach((_,j)=>{ const b=document.getElementById('edp_'+j); if(b) b.className='dp-btn'+(j===i?' active':''); });
+}
+function pickEditType(t) {
+    editSelType=t;
+    document.getElementById('ed_btn_theory').className   = 'type-btn'+(t==='theory'  ?' active-theory':'');
+    document.getElementById('ed_btn_practice').className = 'type-btn'+(t==='practice'?' active-practice':'');
+}
+async function submitEditEntry() {
+    if(!editTarget) return;
+    const {entry, sched} = editTarget;
+    const subject  = document.getElementById('ed_subject').value.trim();
+    const start    = getTimeVal('ed_start_h','ed_start_m');
+    const end      = getTimeVal('ed_end_h','ed_end_m');
+    const location = document.getElementById('ed_location').value.trim();
+    const err      = document.getElementById('ed_err');
+    if(!subject || editSelDay===null){
+        err.textContent='กรุณากรอกข้อมูลให้ครบถ้วน'; err.classList.remove('hidden'); return;
+    }
+    if(start >= end){
+        err.textContent='เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น'; err.classList.remove('hidden'); return;
+    }
+    // Optimistic update (client-side only — replace entry data locally)
+    const btn = document.getElementById('ed_btn');
+    btn.disabled=true; btn.textContent='กำลังบันทึก...';
+    try {
+        const creditVal = parseInt(document.getElementById('ed_credit').value) || null;
+        const sectionVal = document.getElementById('ed_section').value.trim();
+        await apiFetch(API.entryDel(entry.id),'DELETE');
+        const res = await apiFetch(API.entries(sched.id),'POST',{
+            subject, day:editSelDay, start, end, location,
+            entry_type: sched.type!=='work' ? editSelType : undefined,
+            credit: creditVal,
+            section: sectionVal
+        });
+        sched.entries = (sched.entries||[]).filter(e=>e.id!==entry.id);
+        sched.entries.push(res.entry);
+        closeModal('modalEditEntry');
+        render();
+    } catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
+    finally{ btn.disabled=false; btn.textContent='บันทึก'; }
+}
+
+// ════════════════════════════════════════════════════════════
+//  DELETE
+// ════════════════════════════════════════════════════════════
+function openDeleteSchedModal() {
+    const s = getActive(); if(!s) return;
+    document.getElementById('del_title').textContent = 'ลบตาราง?';
+    document.getElementById('del_msg').textContent   = `"${s.name}" และรายการทั้งหมดจะถูกลบออกถาวร`;
+    delTarget = {kind:'sched', id:s.id};
+    openModal('modalDelete');
+}
+function openDeleteEntryModal(id) {
+    document.getElementById('del_title').textContent = 'ลบรายการ?';
+    document.getElementById('del_msg').textContent   = 'รายการนี้จะถูกลบออกถาวร';
+    delTarget = {kind:'entry', id};
+    openModal('modalDelete');
+}
+async function confirmDelete() {
+    if(!delTarget) return;
+    const btn = document.getElementById('del_btn');
+    btn.disabled=true; btn.textContent='กำลังลบ...';
+    try {
+        if(delTarget.kind==='sched') {
+            await apiFetch(API.schedDel(delTarget.id),'DELETE');
+            schedules = schedules.filter(s=>s.id!==delTarget.id);
+            activeId  = schedules[0]?.id ?? null;
+            dispatchNavRefresh();
+        } else if(delTarget.kind==='calevent') {
+            await apiFetch(API_CAL.eventDetail(delTarget.id),'DELETE');
+            calEvents = calEvents.filter(e=>e.id!==delTarget.id);
+            renderCalendar();
+            renderCalEventList();
+        } else {
+            await apiFetch(API.entryDel(delTarget.id),'DELETE');
+            const sched = getActive();
+            sched.entries = sched.entries.filter(e=>e.id!==delTarget.id);
+        }
+        closeModal('modalDelete');
+        render();
+    } catch(e){ alert(e.message); }
+    finally{ btn.disabled=false; btn.textContent='ลบออก'; }
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODAL HELPERS
+// ════════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+['modalNewSched','modalAddEntry','modalDelete','modalEditEntry','modalEntryDetail'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('click', e=>{
+        if(e.target===document.getElementById(id)) closeModal(id);
+    });
+});
+
+// ════════════════════════════════════════════════════════════
+//  Sidebar nav refresh (re-runs the sidebar script)
+// ════════════════════════════════════════════════════════════
+function dispatchNavRefresh() {
+    // Re-render sidebar Schedule items by fetching latest list
+    fetch(API.schedules).then(r=>r.json()).then(data=>{
+        const items = document.getElementById('schedNavItems');
+        const empty = document.getElementById('schedNavEmpty');
+        if(!items||!empty) return;
+        const ICON={work:'work',study:'school',teach:'menu_book'};
+        if(!data.schedules.length){
+            empty.style.display=''; items.innerHTML=''; return;
+        }
+        empty.style.display='none';
+        items.innerHTML = data.schedules.map(s=>`
+            <a href="/schedule/?id=${s.id}" draggable="false" class="nav-item nav-item--sub">
+                <span class="material-symbols-outlined" style="font-size:16px">${ICON[s.type]||'calendar_month'}</span>
+                <span class="truncate max-w-[120px]">${s.name}</span>
+            </a>`).join('');
+    }).catch(()=>{});
+}
+
+// ════════════════════════════════════════════════════════════
+//  ENTRY DETAIL POPUP
+// ════════════════════════════════════════════════════════════
+let detailEntryId = null;
+
+function openEntryDetail(entryId) {
+    const sched = getActive(); if(!sched) return;
+    const entry = (sched.entries||[]).find(e=>e.id===entryId); if(!entry) return;
+    detailEntryId = entryId;
+
+    const TYPE_LABEL = {theory:'ทฤษฎี', practice:'ปฏิบัติ'};
+    const TYPE_CLS   = {theory:'bg-primary-fixed text-primary', practice:'bg-[#d1fae5] text-[#047857]'};
+    const WORK_CLS   = 'bg-[#fce7f3] text-[#be185d]';
+
+    const hdr = document.getElementById('edd_header');
+    const isWork = sched.type === 'work';
+    const gradMap = {theory:'from-[#1a146b] to-[#3730a3]', practice:'from-[#047857] to-[#065f46]', work:'from-[#be185d] to-[#9d174d]'};
+    const gradKey = isWork ? 'work' : (entry.entry_type||'theory');
+    hdr.style.background = `linear-gradient(135deg, var(--tw-gradient-stops))`;
+    hdr.className = `px-6 py-5 flex items-start justify-between gap-3 bg-gradient-to-br ${gradMap[gradKey]} text-white rounded-t-3xl`;
+
+    const typeBadge = document.getElementById('edd_type_badge');
+    if (isWork) {
+        typeBadge.textContent = 'งาน / โครงการ';
+        typeBadge.className = 'text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 text-white';
+    } else {
+        typeBadge.textContent = TYPE_LABEL[entry.entry_type] || 'ทฤษฎี';
+        typeBadge.className = 'text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 text-white';
+    }
+
+    const creditBadge = document.getElementById('edd_credit_badge');
+    if (entry.credit != null) {
+        creditBadge.textContent = `${entry.credit} หน่วยกิต`;
+        creditBadge.className = 'text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 text-white';
+        creditBadge.classList.remove('hidden');
+    } else {
+        creditBadge.classList.add('hidden');
+    }
+
+    document.getElementById('edd_subject').textContent = entry.subject;
+    document.getElementById('edd_subject').className = 'font-headline font-bold text-lg text-white leading-snug';
+    document.getElementById('edd_day').textContent  = DAYS_FULL[entry.day];
+    document.getElementById('edd_time').textContent = `${entry.start} – ${entry.end}`;
+
+    const locRow = document.getElementById('edd_location_row');
+    if (entry.location) {
+        document.getElementById('edd_location').textContent = entry.location;
+        locRow.classList.remove('hidden');
+    } else {
+        locRow.classList.add('hidden');
+    }
+
+    openModal('modalEntryDetail');
+}
+
+function editFromDetail() {
+    if (!detailEntryId) return;
+    closeModal('modalEntryDetail');
+    openEditEntryModal(detailEntryId);
+}
+
+function deleteFromDetail() {
+    if (!detailEntryId) return;
+    closeModal('modalEntryDetail');
+    openDeleteEntryModal(detailEntryId);
+}
+
+// ════════════════════════════════════════════════════════════
+//  AI IMPORT
+// ════════════════════════════════════════════════════════════
+let aiParsedEntries = [];
+
+function openAIImportModal() {
+    const sched = getActive();
+    if (!sched) { alert('กรุณาเลือกตารางก่อน'); return; }
+    document.getElementById('ai_input').value = '';
+    document.getElementById('ai_err').classList.add('hidden');
+    document.getElementById('ai_step1').classList.remove('hidden');
+    document.getElementById('ai_step2').classList.add('hidden');
+    aiParsedEntries = [];
+    openModal('modalAIImport');
+}
+
+function aiBack() {
+    document.getElementById('ai_step1').classList.remove('hidden');
+    document.getElementById('ai_step2').classList.add('hidden');
+    document.getElementById('ai_save_err').classList.add('hidden');
+}
+
+const DAY_MAP = {
+    'M':'จ','MON':'จ','MONDAY':'จ','จ':'จ','จันทร์':'จ',
+    'T':'อ','TUE':'อ','TUESDAY':'อ','อ':'อ','อังคาร':'อ',
+    'W':'พ','WED':'พ','WEDNESDAY':'พ','พ':'พ','พุธ':'พ',
+    'H':'พฤ','TH':'พฤ','THU':'พฤ','THURSDAY':'พฤ','พฤ':'พฤ','พฤหัส':'พฤ','พฤหัสบดี':'พฤ',
+    'F':'ศ','FRI':'ศ','FRIDAY':'ศ','ศ':'ศ','ศุกร์':'ศ',
+    'S':'ส','SAT':'ส','SATURDAY':'ส','ส':'ส','เสาร์':'ส',
+    'U':'อา','SUN':'อา','SUNDAY':'อา','อา':'อา','อาทิตย์':'อา',
+};
+const DAY_IDX = {'อา':0,'จ':1,'อ':2,'พ':3,'พฤ':4,'ศ':5,'ส':6};
+
+async function runAIImport() {
+    const sched = getActive(); if (!sched) return;
+    const raw = document.getElementById('ai_input').value.trim();
+    const err = document.getElementById('ai_err');
+    err.classList.add('hidden');
+    if (!raw) { err.textContent = 'กรุณาวางข้อมูลตารางเรียน'; err.classList.remove('hidden'); return; }
+
+    const btn = document.getElementById('ai_btn');
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="30 10" opacity=".4"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg> กำลังวิเคราะห์...`;
+
+    const schedType = sched.type; // 'study' | 'teach' | 'work'
+    try {
+        const res = await fetch('/schedule/api/ai-parse/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ text: raw, schedule_type: schedType })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+        const parsed = data.entries;
+        if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('ไม่พบข้อมูลตารางเรียนในข้อความ กรุณาตรวจสอบใหม่');
+
+        // กรองชื่อวิชาให้เหลือแค่รหัสวิชา (3 ตัวอักษร + ตัวเลข เช่น ICT311, HMM318)
+        const COURSE_CODE_RE = /[A-Z]{2,4}\d{2,6}/;
+        parsed.forEach(e => {
+            const m = (e.subject || '').match(COURSE_CODE_RE);
+            if (m) e.subject = m[0];
+        });
+
+        aiParsedEntries = parsed;
+        renderAIPreview(parsed, sched);
+        document.getElementById('ai_step1').classList.add('hidden');
+        document.getElementById('ai_step2').classList.remove('hidden');
+    } catch(e) {
+        err.textContent = e.message;
+        err.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span> วิเคราะห์และนำเข้า`;
+    }
+}
+
+function renderAIPreview(entries, sched) {
+    document.getElementById('ai_found_count').textContent = entries.length;
+    const TYPE_COLOR = { theory:'bg-[#e2dfff] text-[#1a146b]', practice:'bg-[#d1fae5] text-[#047857]' };
+    const TYPE_LABEL = { theory:'ทฤษฎี', practice:'ปฏิบัติ' };
+    const list = document.getElementById('ai_preview_list');
+    list.innerHTML = entries.map((e, i) => `
+        <div class="flex items-start gap-3 p-3 rounded-2xl bg-surface-container border border-surface-container-high">
+            <div class="w-7 h-7 rounded-xl bg-primary-fixed flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span class="text-[11px] font-black text-primary">${i+1}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="font-bold text-sm text-on-surface truncate">${e.subject}${e.section ? ` <span class="font-semibold text-secondary text-[11px]">Sec.${e.section}</span>` : ''}</p>
+                <div class="flex flex-wrap gap-1.5 mt-1">
+                    <span class="text-[11px] font-semibold bg-surface-container-high text-secondary px-2 py-0.5 rounded-full">${DAYS_FULL[e.day]||'?'}</span>
+                    <span class="text-[11px] font-semibold bg-surface-container-high text-secondary px-2 py-0.5 rounded-full">${e.start}–${e.end}</span>
+                    ${e.credit != null ? `<span class="text-[11px] font-semibold bg-primary-fixed text-primary px-2 py-0.5 rounded-full">${e.credit} หน่วยกิต</span>` : ''}
+                    ${e.location ? `<span class="text-[11px] font-semibold bg-surface-container-high text-secondary px-2 py-0.5 rounded-full truncate max-w-[180px]">${e.location}</span>` : ''}
+                    ${sched.type !== 'work' ? `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLOR[e.entry_type]||TYPE_COLOR.theory}">${TYPE_LABEL[e.entry_type]||'ทฤษฎี'}</span>` : ''}
+                </div>
+            </div>
+            <button onclick="removeAIEntry(${i})" class="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-error-container text-secondary hover:text-on-error-container transition-colors flex-shrink-0 mt-0.5">
+                <span class="material-symbols-outlined" style="font-size:14px">close</span>
+            </button>
+        </div>`).join('');
+}
+
+function removeAIEntry(i) {
+    aiParsedEntries.splice(i, 1);
+    const sched = getActive();
+    if (aiParsedEntries.length === 0) { aiBack(); return; }
+    renderAIPreview(aiParsedEntries, sched);
+    document.getElementById('ai_found_count').textContent = aiParsedEntries.length;
+}
+
+async function confirmAIImport() {
+    const sched = getActive(); if (!sched) return;
+    if (aiParsedEntries.length === 0) return;
+    const btn = document.getElementById('ai_confirm_btn');
+    const err = document.getElementById('ai_save_err');
+    err.classList.add('hidden');
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="30 10" opacity=".4"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg> กำลังบันทึก...`;
+    try {
+        for (const e of aiParsedEntries) {
+            const body = {
+                subject: e.subject,
+                day: e.day,
+                start: e.start,
+                end: e.end,
+                location: e.location || '',
+                entry_type: sched.type !== 'work' ? (e.entry_type || 'theory') : undefined,
+                credit: (typeof e.credit === 'number') ? e.credit : (parseInt(e.credit) || null),
+                section: e.section || '',
+            };
+            const data = await apiFetch(API.entries(sched.id), 'POST', body);
+            sched.entries = [...(sched.entries || []), data.entry];
+        }
+        closeModal('modalAIImport');
+        render();
+    } catch(e) {
+        err.textContent = 'บันทึกบางรายการไม่สำเร็จ: ' + e.message;
+        err.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px">add_task</span> นำเข้าทั้งหมด`;
+    }
+}
+
+// Close AI modal on backdrop click
+document.getElementById('modalAIImport')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('modalAIImport')) closeModal('modalAIImport');
+});
+
+// ════════════════════════════════════════════════════════════
+//  SCHEDULE NOTIFICATION POLLING
+//  เรียก backend ทุก 5 นาที เพื่อสร้าง Notification
+//  สำหรับวิชาที่ใกล้เริ่มภายใน 15 นาที
+// ════════════════════════════════════════════════════════════
+const API_NOTIFY = '/schedule/api/notify/';
+
+async function checkScheduleNotifications() {
+    try {
+        const res = await fetch(API_NOTIFY, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.notified > 0) {
+            showToastNotification(data.notified);
+        }
+    } catch { /* silent fail */ }
+}
+
+function showToastNotification(count) {
+    // สร้าง toast แจ้งเตือนชั่วคราว
+    const existing = document.getElementById('schedNotifToast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'schedNotifToast';
+    toast.className = 'fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-float border border-white/60 bg-surface-container-lowest transition-all';
+    toast.style.animation = 'mIn .3s cubic-bezier(.16,1,.3,1) both';
+    toast.innerHTML = `
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-white" style="font-size:18px">notifications_active</span>
+        </div>
+        <div>
+            <p class="text-sm font-bold text-on-surface">แจ้งเตือนตาราง</p>
+            <p class="text-xs text-secondary">มี ${count} รายการที่กำลังจะเริ่มใน 15 นาที</p>
+        </div>
+        <button onclick="this.parentElement.remove()" class="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors text-secondary ml-1">
+            <span class="material-symbols-outlined" style="font-size:14px">close</span>
+        </button>`;
+    document.body.appendChild(toast);
+    // auto dismiss หลัง 8 วินาที
+    setTimeout(() => toast?.remove(), 8000);
+}
+
+// เรียกทันทีตอนโหลด และ loop ทุก 5 นาที
+checkScheduleNotifications();
+setInterval(checkScheduleNotifications, 5 * 60 * 1000);
+
+// ════════════════════════════════════════════════════════════
+//  CALENDAR EVENTS — state & API
+// ════════════════════════════════════════════════════════════
+const CAL_COLORS = {
+    indigo: { bg:'bg-[#e2dfff]', text:'text-[#1a146b]', dot:'#3730a3', grad:'from-[#1a146b] to-[#3730a3]' },
+    green:  { bg:'bg-[#d1fae5]', text:'text-[#047857]', dot:'#047857', grad:'from-[#047857] to-[#065f46]' },
+    rose:   { bg:'bg-[#fce7f3]', text:'text-[#be185d]', dot:'#be185d', grad:'from-[#be185d] to-[#9d174d]' },
+    amber:  { bg:'bg-[#fef9c3]', text:'text-[#a16207]', dot:'#d97706', grad:'from-[#b45309] to-[#92400e]' },
+    sky:    { bg:'bg-[#e0f2fe]', text:'text-[#0369a1]', dot:'#0284c7', grad:'from-[#0369a1] to-[#075985]' },
+    orange: { bg:'bg-[#ffedd5]', text:'text-[#c2410c]', dot:'#ea580c', grad:'from-[#c2410c] to-[#9a3412]' },
+};
+
+let calEvents     = [];   // events ของเดือนที่แสดงอยู่
+let ceEditId      = null; // null = add mode, number = edit mode
+let ceSelColor    = 'indigo';
+let ceDetailId    = null;
+
+const API_CAL = {
+    events:      '/schedule/api/calendar/events/',
+    eventDetail: id => `/schedule/api/calendar/events/${id}/`,
+    calNotify:   '/schedule/api/calendar/notify/',
+};
+
+async function loadCalEvents() {
+    const sched = getActive();
+    if (!sched) { calEvents = []; renderCalendar(); renderCalEventList(); return; }
+    try {
+        const res  = await apiFetch(`${API_CAL.events}?schedule_id=${sched.id}&year=${calY}&month=${calM+1}`);
+        calEvents  = res.events || [];
+        renderCalendar();
+        renderCalEventList();
+    } catch { calEvents = []; }
+}
+
+// ── Render calendar — override เดิม เพิ่ม event dots ──
+function renderCalendar() {
+    const MONTHS_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const today = new Date();
+    document.getElementById('calWeekdays').innerHTML = DAYS_TH.map(d=>`<div class="py-1">${d}</div>`).join('');
+    document.getElementById('calLabel').textContent = `${MONTHS_TH[calM]} ${calY+543}`;
+    const first = new Date(calY,calM,1).getDay();
+    const total = new Date(calY,calM+1,0).getDate();
+
+    // วันที่มี CalendarEvent (grouping by date)
+    const eventsByDate = {};
+    calEvents.forEach(ev => {
+        const d = parseInt(ev.date.split('-')[2]);
+        if (!eventsByDate[d]) eventsByDate[d] = [];
+        eventsByDate[d].push(ev);
+    });
+
+    let html = '';
+    for(let i=0;i<first;i++) html += '<div></div>';
+    for(let d=1;d<=total;d++){
+        const isToday = d===today.getDate()&&calM===today.getMonth()&&calY===today.getFullYear();
+        const dayEvs = eventsByDate[d] || [];
+
+        // dot สีตาม CalendarEvent เท่านั้น (สูงสุด 3 จุด)
+        const evDots = dayEvs.slice(0,3).map(ev=>{
+            const col = CAL_COLORS[ev.color]?.dot || '#3730a3';
+            return `<span class="w-1.5 h-1.5 rounded-full inline-block" style="background:${col}"></span>`;
+        }).join('');
+
+        html += `<div class="relative flex flex-col items-center gap-0.5 pb-1 cursor-pointer group" onclick="calDayClick(${d},${calY},${calM})">
+            <div class="w-7 h-7 flex items-center justify-center rounded-full text-xs font-semibold transition-all
+                ${isToday ? 'btn-primary-gradient text-white shadow-sm' : 'text-on-surface group-hover:bg-primary-fixed group-hover:text-primary'}">${d}</div>
+            <div class="flex gap-0.5 min-h-[6px]">${evDots}</div>
+        </div>`;
+    }
+    document.getElementById('calDays').innerHTML = html;
+}
+
+// ── List events ที่อยู่ในเดือนนี้ ──
+function renderCalEventList() {
+    const list = document.getElementById('calEventList');
+    if (!list) return;
+    if (!calEvents.length) { list.classList.add('hidden'); return; }
+
+    list.classList.remove('hidden');
+    // sort by date
+    const sorted = [...calEvents].sort((a,b)=>a.date.localeCompare(b.date));
+    list.innerHTML = `
+        <div class="border-t border-surface-container pt-3 mt-1">
+            <p class="text-[10px] font-black text-secondary uppercase tracking-wider mb-2">กิจกรรมในเดือนนี้</p>
+            ${sorted.map(ev => {
+                const c = CAL_COLORS[ev.color] || CAL_COLORS.indigo;
+                const [,, dd] = ev.date.split('-');
+                const timeStr = ev.start ? `· ${ev.start}${ev.end?' – '+ev.end:''}` : '';
+                return `<div class="flex items-center gap-2 p-2 rounded-xl hover:bg-surface-container cursor-pointer transition-colors"
+                    onclick="openCalEventDetail(${ev.id})">
+                    <div class="w-6 h-6 rounded-lg ${c.bg} flex items-center justify-center shrink-0">
+                        <span class="text-[10px] font-black ${c.text}">${parseInt(dd)}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-on-surface truncate">${ev.title}</p>
+                        ${timeStr||ev.location ? `<p class="text-[10px] text-secondary truncate">${timeStr} ${ev.location||''}</p>` : ''}
+                    </div>
+                    <button onclick="event.stopPropagation();openCalEventModal(${ev.id})"
+                        class="w-5 h-5 rounded-lg hover:bg-surface-container-high flex items-center justify-center opacity-0 group-hover:opacity-100 text-secondary transition-all">
+                        <span class="material-symbols-outlined" style="font-size:12px">edit</span>
+                    </button>
+                </div>`;
+            }).join('')}
+        </div>`;
+}
+
+// ── กดวันในปฏิทิน ──
+function calDayClick(d, y, m) {
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    openCalEventModal(null, dateStr);
+}
+
+// ── Open Add/Edit modal ──
+function openCalEventModal(editId = null, prefillDate = null) {
+    ceEditId   = editId;
+    ceSelColor = 'indigo';
+
+    const titleEl = document.getElementById('ce_title');
+    titleEl.textContent = editId ? 'แก้ไขกิจกรรม' : 'เพิ่มกิจกรรม';
+
+    // Reset fields
+    document.getElementById('ce_titleInput').value = '';
+    document.getElementById('ce_date').value = prefillDate || new Date().toISOString().split('T')[0];
+    document.getElementById('ce_location').value = '';
+    document.getElementById('ce_detail').value = '';
+    document.getElementById('ce_remind').value = '15';
+    document.getElementById('ce_err').classList.add('hidden');
+
+    // Build color picker
+    _buildCeColorPicker('indigo');
+
+    // Build time dropdowns (optional — add "—" as first option)
+    _buildCeTimePicker('ce_start_h', TIME_HOURS, '');
+    _buildCeTimePicker('ce_start_m', TIME_MINUTES, '');
+    _buildCeTimePicker('ce_end_h',   TIME_HOURS, '');
+    _buildCeTimePicker('ce_end_m',   TIME_MINUTES, '');
+
+    // If editing — prefill
+    if (editId) {
+        const ev = calEvents.find(e=>e.id===editId);
+        if (ev) {
+            document.getElementById('ce_titleInput').value = ev.title;
+            document.getElementById('ce_date').value       = ev.date;
+            document.getElementById('ce_location').value   = ev.location || '';
+            document.getElementById('ce_detail').value     = ev.detail || '';
+            document.getElementById('ce_remind').value     = String(ev.remind_before);
+            ceSelColor = ev.color || 'indigo';
+            _buildCeColorPicker(ceSelColor);
+            if (ev.start) {
+                const [sh,sm] = ev.start.split(':');
+                _buildCeTimePicker('ce_start_h', TIME_HOURS,   sh);
+                _buildCeTimePicker('ce_start_m', TIME_MINUTES, sm);
+            }
+            if (ev.end) {
+                const [eh,em] = ev.end.split(':');
+                _buildCeTimePicker('ce_end_h', TIME_HOURS,   eh);
+                _buildCeTimePicker('ce_end_m', TIME_MINUTES, em);
+            }
+        }
+    }
+
+    openModal('modalCalEvent');
+}
+
+function _buildCeColorPicker(selected) {
+    ceSelColor = selected;
+    const colors = Object.entries(CAL_COLORS);
+    document.getElementById('ce_colorPicker').innerHTML = colors.map(([key, c]) =>
+        `<button type="button" onclick="pickCeColor('${key}')" id="cecolor_${key}"
+            class="w-7 h-7 rounded-full border-2 transition-all ${key===selected?'border-on-surface scale-110':'border-transparent hover:scale-105'}"
+            style="background:${c.dot}" title="${key}"></button>`
+    ).join('');
+}
+
+function pickCeColor(key) {
+    ceSelColor = key;
+    _buildCeColorPicker(key);
+}
+
+function _buildCeTimePicker(inputId, options, defaultVal) {
+    const hiddenInput = document.getElementById(inputId);
+    const menuId    = inputId + '_menu';
+    const triggerId = inputId + '_trigger';
+    const labelId   = inputId + '_label';
+    const menu    = document.getElementById(menuId);
+    const labelEl = document.getElementById(labelId);
+    if (!menu || !hiddenInput) return;
+
+    hiddenInput.value = defaultVal;
+    if (labelEl) labelEl.textContent = defaultVal || '—';
+
+    // "ไม่ระบุ" as first option
+    const allOptions = ['', ...options];
+    menu.innerHTML = allOptions.map(v =>
+        `<div class="time-dropdown-item${v===defaultVal?' selected':''}"
+            onclick="selectCeTimeOption('${inputId}','${v}')">${v||'—'}</div>`
+    ).join('');
+}
+
+function selectCeTimeOption(inputId, val) {
+    const hiddenInput = document.getElementById(inputId);
+    const labelEl     = document.getElementById(inputId + '_label');
+    const menu        = document.getElementById(inputId + '_menu');
+    if (!hiddenInput) return;
+    hiddenInput.value = val;
+    if (labelEl) labelEl.textContent = val || '—';
+    menu.querySelectorAll('.time-dropdown-item').forEach(el => {
+        el.classList.toggle('selected', (el.textContent.trim() === (val||'—')));
+    });
+    closeAllTimeDropdowns();
+}
+
+async function submitCalEvent() {
+    const sched = getActive();
+    if (!sched) { document.getElementById('ce_err').textContent='กรุณาเลือกตารางก่อน'; document.getElementById('ce_err').classList.remove('hidden'); return; }
+    const title    = document.getElementById('ce_titleInput').value.trim();
+    const date     = document.getElementById('ce_date').value;
+    const location = document.getElementById('ce_location').value.trim();
+    const detail   = document.getElementById('ce_detail').value.trim();
+    const remind   = parseInt(document.getElementById('ce_remind').value) || 0;
+    const startH   = document.getElementById('ce_start_h').value;
+    const startM   = document.getElementById('ce_start_m').value;
+    const endH     = document.getElementById('ce_end_h').value;
+    const endM     = document.getElementById('ce_end_m').value;
+    const start    = (startH && startM) ? `${startH}:${startM}` : '';
+    const end      = (endH && endM)     ? `${endH}:${endM}`     : '';
+    const err      = document.getElementById('ce_err');
+
+    err.classList.add('hidden');
+    if (!title) { err.textContent='กรุณากรอกชื่อกิจกรรม'; err.classList.remove('hidden'); return; }
+    if (!date)  { err.textContent='กรุณาระบุวันที่';       err.classList.remove('hidden'); return; }
+
+    const btn = document.getElementById('ce_btn');
+    btn.disabled=true; btn.textContent='กำลังบันทึก...';
+
+    const body = { title, date, location, detail, start, end, color: ceSelColor, remind_before: remind, schedule_id: sched.id };
+
+    try {
+        let ev;
+        if (ceEditId) {
+            const res = await apiFetch(API_CAL.eventDetail(ceEditId), 'PUT', body);
+            ev = res.event;
+            calEvents = calEvents.map(e => e.id===ceEditId ? ev : e);
+        } else {
+            const res = await apiFetch(API_CAL.events, 'POST', body);
+            ev = res.event;
+            calEvents.push(ev);
+        }
+        closeModal('modalCalEvent');
+        renderCalendar();
+        renderCalEventList();
+    } catch(e) {
+        err.textContent = e.message;
+        err.classList.remove('hidden');
+    } finally {
+        btn.disabled=false;
+        btn.textContent='บันทึก';
+    }
+}
+
+// ── Detail popup ──
+function openCalEventDetail(id) {
+    const ev = calEvents.find(e=>e.id===id);
+    if (!ev) return;
+    ceDetailId = id;
+
+    const c = CAL_COLORS[ev.color] || CAL_COLORS.indigo;
+    const hdr = document.getElementById('ced_header');
+    hdr.className = `px-6 py-5 flex items-start justify-between gap-3 rounded-t-3xl bg-gradient-to-br ${c.grad} text-white`;
+
+    // format date Thai
+    const [y,m,d] = ev.date.split('-').map(Number);
+    const MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    document.getElementById('ced_date').textContent      = `${d} ${MONTHS_FULL[m-1]} ${y+543}`;
+    document.getElementById('ced_titleText').textContent = ev.title;
+
+    const timeBox = document.getElementById('ced_timeBox');
+    if (ev.start) {
+        document.getElementById('ced_time').textContent = ev.start + (ev.end?' – '+ev.end:'');
+        timeBox.classList.remove('hidden');
+    } else {
+        timeBox.classList.add('hidden');
+    }
+    const locBox = document.getElementById('ced_locationBox');
+    if (ev.location) {
+        document.getElementById('ced_location').textContent = ev.location;
+        locBox.classList.remove('hidden');
+    } else { locBox.classList.add('hidden'); }
+
+    const detBox = document.getElementById('ced_detailBox');
+    if (ev.detail) {
+        document.getElementById('ced_detail').textContent = ev.detail;
+        detBox.classList.remove('hidden');
+    } else { detBox.classList.add('hidden'); }
+
+    openModal('modalCalEventDetail');
+}
+
+function editCalEvent() {
+    if (!ceDetailId) return;
+    closeModal('modalCalEventDetail');
+    openCalEventModal(ceDetailId);
+}
+
+function deleteCalEvent() {
+    if (!ceDetailId) return;
+    closeModal('modalCalEventDetail');
+    // ใช้ modal ลบเดิม
+    document.getElementById('del_title').textContent = 'ลบกิจกรรม?';
+    const ev = calEvents.find(e => e.id === ceDetailId);
+    document.getElementById('del_msg').textContent = `"${ev?.title || 'กิจกรรมนี้'}" จะถูกลบออกถาวร`;
+    delTarget = { kind: 'calevent', id: ceDetailId };
+    openModal('modalDelete');
+}
+
+// Backdrop close
+['modalCalEvent','modalCalEventDetail'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', e => {
+        if (e.target === document.getElementById(id)) closeModal(id);
+    });
+});
+
+// โหลด events ตอนเปิดหน้า
+loadCalEvents();
+
+// override prevMonth/nextMonth เพื่อโหลด events ใหม่ด้วย
+function prevMonth(){ if(--calM<0){calM=11;calY--;} loadCalEvents(); }
+function nextMonth(){ if(++calM>11){calM=0;calY++;} loadCalEvents(); }
+</script>
+{% endblock %}

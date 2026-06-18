@@ -1,0 +1,1311 @@
+{% extends "projects/base.html" %}
+
+{% block title %}My Projects — KanFlow{% endblock %}
+{% block page_title %}My Projects{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Project card top accent */
+    .project-card-accent-0 { background: linear-gradient(90deg, #1a146b, #5654a8); }
+    .project-card-accent-1 { background: linear-gradient(90deg, #00432c, #4edea3); }
+    .project-card-accent-2 { background: linear-gradient(90deg, #93000a, #e97575); }
+    .project-card-accent-3 { background: linear-gradient(90deg, #3a485b, #b9c7df); }
+    .project-card-accent-4 { background: linear-gradient(90deg, #005236, #6ffbbe); }
+
+    .project-card {
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        background: #ffffff;
+        box-shadow: 0 2px 0px rgba(26,20,107,0.06), 0 6px 20px rgba(26,20,107,0.14), 0 16px 40px rgba(26,20,107,0.10) !important;
+    }
+    .project-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 0px rgba(26,20,107,0.08), 0 16px 40px rgba(26,20,107,0.22), 0 32px 64px rgba(26,20,107,0.14) !important;
+    }
+
+    /* Category filter pill */
+    .cat-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 14px; border-radius: 9999px;
+        font-size: 12px; font-weight: 700;
+        transition: all 0.15s ease; cursor: pointer;
+        background: #f2f4f6; color: #515f74;
+    }
+    .cat-pill:hover { background: #e2dfff; color: #1a146b; }
+    .cat-pill.active { background: #1a146b; color: #ffffff; }
+
+    /* Progress bar */
+    .progress-track {
+        height: 6px; background: #eceef0; border-radius: 9999px; overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%; border-radius: 9999px;
+        background: linear-gradient(90deg, #1a146b, #5654a8);
+        transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .progress-fill.at-risk { background: linear-gradient(90deg, #ba1a1a, #e97575); }
+    .progress-fill.done    { background: linear-gradient(90deg, #00432c, #4edea3); }
+
+    /* Dropdown */
+    .proj-dropdown { display: none; }
+    .proj-dropdown.open {
+        display: block;
+        animation: dropIn 0.15s cubic-bezier(0.16,1,0.3,1);
+    }
+    @keyframes dropIn {
+        from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Modal */
+    .modal-backdrop {
+        background: rgba(15,15,25,0.35);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        animation: fadeIn 0.2s ease;
+    }
+    .modal-panel {
+        animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1);
+    }
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+    /* Drag Prevention */
+    .no-drag {
+        -webkit-user-drag: none;
+        user-drag: none;
+    }
+
+    .input-inset {
+        background: #f2f4f6; border: none;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+        border-radius: 0.75rem;
+    }
+    .input-inset:focus {
+        outline: none; border-bottom-color: #1a146b;
+        background: #ffffff; box-shadow: none;
+    }
+
+    /* ── Custom Dropdown ── */
+    .kf-dd { position: relative; display: block; }
+    .kf-dd-trigger {
+        display: flex; align-items: center; gap: 8px;
+        background: #f2f4f6; border: none; border-bottom: 2px solid transparent;
+        border-radius: 0.75rem; padding: 9px 12px;
+        cursor: pointer; transition: all 0.2s ease;
+        font-size: 13px; font-weight: 600; color: #1a1c1e;
+        user-select: none; -webkit-user-select: none; width: 100%;
+    }
+    .kf-dd-trigger:hover { background: #eceef0; }
+    .kf-dd-trigger.open  { background: #ffffff; border-bottom-color: #1a146b; }
+    .kf-dd-trigger .kf-chevron { margin-left: auto; color: #74777f; flex-shrink: 0; font-size: 18px; transition: transform 0.2s ease; }
+    .kf-dd-trigger.open .kf-chevron { transform: rotate(180deg); }
+    .kf-dd-menu {
+        display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+        background: white; border-radius: 0.875rem;
+        box-shadow: 0 8px 32px rgba(26,20,107,0.14), 0 2px 8px rgba(26,20,107,0.08);
+        border: 1px solid #e8eaf0; z-index: 100;
+        overflow: hidden; padding: 4px 0;
+        animation: kfDropIn 0.15s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes kfDropIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+    .kf-dd-menu.show { display: block; }
+    .kf-dd-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px; font-size: 13px; font-weight: 500; color: #1a1c1e;
+        cursor: pointer; transition: background 0.12s;
+        user-select: none; -webkit-user-select: none;
+    }
+    .kf-dd-item:hover   { background: #f2f4f6; }
+    .kf-dd-item.selected { background: #eceeff; color: #1a146b; font-weight: 700; }
+    .kf-dd-item .kf-item-icon {
+        width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center; font-size: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<!-- Search -->
+<div class="relative hidden sm:block">
+    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary" style="font-size:16px">search</span>
+    <input type="text" id="projectSearch" placeholder="Search projects..."
+        oninput="filterProjects(this.value)"
+        class="pl-9 pr-4 py-2 bg-surface-container border-none rounded-xl text-sm text-on-surface placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-primary/15 transition-all w-52 focus:w-64 focus:bg-surface-container-lowest">
+</div>
+<!-- New Project -->
+<button onclick="openModal()"
+    class="flex items-center gap-2 btn-primary-gradient text-white text-sm font-bold px-4 py-2 rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 active:scale-95">
+    <span class="material-symbols-outlined" style="font-size:16px">add</span>
+    <span class="hidden sm:inline">New Project</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="px-3 sm:px-6 lg:px-10 py-4 sm:py-8 max-w-7xl mx-auto">
+
+    <!-- ── Stats Row ── -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-8">
+        <!-- Total -->
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="flex items-center gap-4">
+                <div class="w-11 h-11 rounded-2xl bg-primary-fixed flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-primary fill-icon">folder</span>
+                </div>
+                <div>
+                    <p class="text-3xl font-headline font-extrabold text-primary">{{ projects|length }}</p>
+                    <p class="text-xs text-secondary font-semibold mt-0.5">Total Projects</p>
+                </div>
+            </div>
+        </div>
+        <!-- In Progress -->
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="flex items-center gap-4">
+                <div class="w-11 h-11 rounded-2xl bg-secondary-container flex items-center justify-center shrink-0">
+                    <span class="w-3 h-3 rounded-full bg-primary aura-dot-lg" style="filter:blur(3px)"></span>
+                </div>
+                <div>
+                    <p class="text-3xl font-headline font-extrabold text-primary">{{ active_count }}</p>
+                    <p class="text-xs text-secondary font-semibold mt-0.5">In Progress</p>
+                </div>
+            </div>
+        </div>
+        <!-- Completed -->
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="flex items-center gap-4">
+                <div class="w-11 h-11 rounded-2xl bg-tertiary-fixed/20 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-on-tertiary-container fill-icon">check_circle</span>
+                </div>
+                <div>
+                    <p class="text-3xl font-headline font-extrabold text-primary">{{ completed_count }}</p>
+                    <p class="text-xs text-secondary font-semibold mt-0.5">Completed</p>
+                </div>
+            </div>
+        </div>
+        <!-- Team Members -->
+        <div class="bg-surface-container-lowest rounded-3xl p-5 shadow-card">
+            <div class="flex items-center gap-4">
+                <div class="w-11 h-11 rounded-2xl bg-primary-fixed flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-on-primary-fixed-variant fill-icon">group</span>
+                </div>
+                <div>
+                    <p class="text-3xl font-headline font-extrabold text-primary">{{ member_count }}</p>
+                    <p class="text-xs text-secondary font-semibold mt-0.5">Team Members</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Category Filter Bar ── -->
+    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/20 px-3 sm:px-4 py-3 mb-4 sm:mb-6 space-y-2.5 shadow-sm filter-bar no-drag overflow-x-auto">
+
+        <!-- Row 1: Project Category -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[10px] font-black uppercase tracking-widest text-secondary w-16 shrink-0">Project</span>
+            <a href="/?{% if selected_task_cat %}task_category={{ selected_task_cat }}{% endif %}" class="cat-pill {% if not selected_cat %}active{% endif %}">
+                <span class="material-symbols-outlined" style="font-size:13px">apps</span> All
+            </a>
+            {% for cat in categories %}
+            <a href="/?category={{ cat.id }}{% if selected_task_cat %}&task_category={{ selected_task_cat }}{% endif %}" class="cat-pill {% if selected_cat == cat.id|stringformat:'s' %}active{% endif %}">
+                <span class="material-symbols-outlined" style="font-size:13px">folder</span> {{ cat.name }}
+            </a>
+            {% endfor %}
+            <button onclick="openManageCat()"
+                class="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-secondary hover:text-primary hover:bg-primary-fixed transition-all">
+                <span class="material-symbols-outlined" style="font-size:13px">tune</span> Manage
+            </button>
+        </div>
+
+        {% if task_categories %}
+        <div class="border-t border-outline-variant/30"></div>
+
+        <!-- Row 2: Task Category -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[10px] font-black uppercase tracking-widest text-secondary w-16 shrink-0">Label</span>
+            <a href="/?{% if selected_cat %}category={{ selected_cat }}{% endif %}" class="cat-pill {% if not selected_task_cat %}active{% endif %}">
+                <span class="material-symbols-outlined" style="font-size:13px">label</span> All
+            </a>
+            {% for tcat in task_categories %}
+            <a href="/?task_category={{ tcat.id }}{% if selected_cat %}&category={{ selected_cat }}{% endif %}" class="cat-pill {% if selected_task_cat == tcat.id|stringformat:'s' %}active{% endif %}">
+                <span class="material-symbols-outlined" style="font-size:13px">sell</span> {{ tcat.name }}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- ── Section Header ── -->
+    <div class="flex items-center justify-between mb-4 sm:mb-5">
+        <div class="flex items-center gap-3">
+            <h2 class="font-headline font-bold text-xl text-primary">
+                {% if selected_cat %}
+                    {% for cat in categories %}{% if selected_cat == cat.id|stringformat:'s' %}{{ cat.name }}{% endif %}{% endfor %}
+                {% else %}All Projects{% endif %}
+            </h2>
+            <span class="text-xs font-black text-on-primary-fixed-variant bg-primary-fixed px-2.5 py-1 rounded-full">{{ projects|length }}</span>
+        </div>
+        <!-- View toggle -->
+        <div class="flex items-center gap-1 bg-surface-container rounded-xl p-1">
+            <button id="gridBtn" onclick="setView('grid')"
+                class="p-2 rounded-lg bg-surface-container-lowest shadow-sm text-primary transition-all">
+                <span class="material-symbols-outlined" style="font-size:16px">grid_view</span>
+            </button>
+            <button id="listBtn" onclick="setView('list')"
+                class="p-2 rounded-lg text-secondary hover:text-primary transition-all">
+                <span class="material-symbols-outlined" style="font-size:16px">view_list</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Project Cards Grid ── -->
+    <div id="projectGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
+
+        {% for project in projects %}
+        {% with idx=forloop.counter0|divisibleby:5 %}
+        <div class="project-card rounded-4xl overflow-hidden cursor-pointer"
+            style="animation: pageEnter 0.4s cubic-bezier(0.16,1,0.3,1) {{ forloop.counter0 }}00ms both;"
+            onclick="window.location='/project/{{ project.id }}/'">
+
+            <!-- Accent bar -->
+            <div class="h-1.5 w-full project-card-accent-{{ forloop.counter0|divisibleby:5|yesno:'0,1,2,3,4' }}"></div>
+
+            <div class="p-3 sm:p-4">
+                <!-- Header -->
+                <div class="flex items-start justify-between mb-3 sm:mb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-10 h-10 rounded-xl btn-primary-gradient flex items-center justify-center text-white text-base font-headline font-extrabold shrink-0 shadow-md shadow-primary/20">
+                            {{ project.name|slice:":1"|upper }}
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="font-headline font-bold text-sm text-primary leading-tight">{{ project.name }}</h3>
+                                {% if project.is_shared %}
+                                <span class="text-[9px] font-black bg-secondary-container text-on-secondary-container px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                    <span class="material-symbols-outlined fill-icon" style="font-size:10px">people</span> Shared
+                                </span>
+                                {% endif %}
+                                {% if project.overdue_count > 0 %}
+                                <span class="flex items-center gap-0.5 text-[9px] font-black bg-error-container text-on-error-container px-1.5 py-0.5 rounded-full animate-pulse">
+                                    <span class="material-symbols-outlined fill-icon" style="font-size:10px">warning</span>
+                                    {{ project.overdue_count }} overdue
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <span class="text-[10px] text-secondary flex items-center gap-1">
+                                    <span class="material-symbols-outlined" style="font-size:11px">person</span>
+                                    {{ project.owner.profile.display_name|default:project.owner.username }}
+                                </span>
+                                {% if project.category %}
+                                <span class="text-[9px] font-black bg-primary-fixed text-on-primary-fixed-variant px-1.5 py-0.5 rounded-full">
+                                    {{ project.category.name }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3-dot menu -->
+                    <div class="relative" onclick="event.stopPropagation()">
+                        <button onclick="toggleProjDrop('drop-{{ project.id }}')"
+                            class="w-8 h-8 rounded-xl bg-surface-container hover:bg-primary-fixed flex items-center justify-center text-on-surface hover:text-primary transition-all shadow-sm">
+                            <span class="material-symbols-outlined" style="font-size:18px">more_horiz</span>
+                        </button>
+                        <div id="drop-{{ project.id }}" class="proj-dropdown absolute right-0 top-10 w-48 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/20 py-1.5 z-20">
+                            <a href="/project/{{ project.id }}/" onclick="event.stopPropagation()"
+                                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors">
+                                <span class="material-symbols-outlined text-secondary" style="font-size:16px">open_in_new</span> Open board
+                            </a>
+                            {% if not project.is_shared %}
+                            <button onclick="event.stopPropagation(); openEditProject({{ project.id }}, '{{ project.name|escapejs }}', '{{ project.description|escapejs }}', '{% if project.deadline %}{{ project.deadline|date:"Y-m-d" }}{% endif %}', '{{ project.status }}', {% if project.category %}{{ project.category.id }}{% else %}null{% endif %})"
+                                class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low transition-colors">
+                                <span class="material-symbols-outlined text-secondary" style="font-size:16px">edit</span> Edit
+                            </button>
+                            <div class="my-1 border-t border-surface-container-high mx-3"></div>
+                            <button onclick="event.stopPropagation(); deleteProject({{ project.id }}, '{{ project.name|escapejs }}')"
+                                class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 transition-colors">
+                                <span class="material-symbols-outlined" style="font-size:16px">delete</span> Delete
+                            </button>
+                            {% else %}
+                            <div class="my-1 border-t border-surface-container-high mx-3"></div>
+                            <button onclick="event.stopPropagation(); requestUpgrade({{ project.id }}, '{{ project.name|escapejs }}')"
+                                class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-primary hover:bg-primary-fixed transition-colors">
+                                <span class="material-symbols-outlined" style="font-size:16px">arrow_upward</span> ขอสิทธิ์เพิ่ม
+                            </button>
+                            <button onclick="event.stopPropagation(); leaveProject({{ project.id }}, '{{ project.name|escapejs }}')"
+                                class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 transition-colors">
+                                <span class="material-symbols-outlined" style="font-size:16px">logout</span> ออกจากโปรเจค
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <p class="text-xs text-secondary leading-relaxed line-clamp-2 mb-3">
+                    {{ project.description|default:"No description provided." }}
+                </p>
+
+                <!-- Task stats grid -->
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <div class="bg-surface-container-low rounded-xl p-2.5 text-center">
+                        <p class="text-[9px] text-secondary font-black uppercase tracking-widest mb-0.5">To Do</p>
+                        <div class="flex items-center justify-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
+                            <span class="font-headline font-bold text-base text-primary">{{ project.todo_count }}</span>
+                        </div>
+                    </div>
+                    <div class="bg-surface-container-low rounded-xl p-2.5 text-center">
+                        <p class="text-[9px] text-secondary font-black uppercase tracking-widest mb-0.5">Doing</p>
+                        <div class="flex items-center justify-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                            <span class="font-headline font-bold text-base text-primary">{{ project.doing_count }}</span>
+                        </div>
+                    </div>
+                    <div class="bg-surface-container-low rounded-xl p-2.5 text-center">
+                        <p class="text-[9px] text-secondary font-black uppercase tracking-widest mb-0.5">Done</p>
+                        <div class="flex items-center justify-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim"></span>
+                            <span class="font-headline font-bold text-base text-primary">{{ project.done_count }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress -->
+                <div class="mb-3">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-1.5 text-xs
+                            {% if project.days_left is not None %}
+                                {% if project.days_left < 0 %}text-error font-bold
+                                {% elif project.days_left <= 3 %}text-on-error-container font-bold
+                                {% else %}text-secondary{% endif %}
+                            {% else %}text-secondary{% endif %}">
+                            <span class="material-symbols-outlined" style="font-size:12px">schedule</span>
+                            {% if project.deadline %}
+                                {% if project.days_left < 0 %}Overdue
+                                {% elif project.days_left == 0 %}Due today!
+                                {% elif project.days_left <= 3 %}{{ project.days_left }}d left
+                                {% else %}{{ project.deadline|date:"M d, Y" }}{% endif %}
+                            {% else %}No deadline{% endif %}
+                        </div>
+                        <span class="font-headline font-extrabold text-xl text-primary">{{ project.progress }}%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill {% if project.days_left is not None and project.days_left < 0 %}at-risk{% elif project.progress == 100 %}done{% endif %}"
+                            style="width: {{ project.progress }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="flex items-center justify-between pt-3 border-t border-surface-container">
+                    <!-- Status badge -->
+                    <div class="flex items-center gap-1.5
+                        {% if project.status == 'active' %}text-primary
+                        {% elif project.status == 'on_hold' %}text-on-error-container
+                        {% else %}text-on-tertiary-container{% endif %}
+                        text-xs font-bold">
+                        <span class="w-1.5 h-1.5 rounded-full
+                            {% if project.status == 'active' %}bg-primary
+                            {% elif project.status == 'on_hold' %}bg-error
+                            {% else %}bg-tertiary-fixed-dim{% endif %}
+                            aura-dot"></span>
+                        {{ project.get_status_display }}
+                    </div>
+                    <button onclick="event.stopPropagation(); window.location='/project/{{ project.id }}/'"
+                        class="bg-surface-container-high hover:bg-primary hover:text-white text-on-surface px-4 py-1.5 rounded-lg font-bold text-xs transition-all duration-200">
+                        Open Board
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+
+        {% empty %}
+        <!-- Empty state -->
+        <div class="col-span-full flex flex-col items-center justify-center py-24 text-center">
+            <div class="w-24 h-24 rounded-4xl bg-primary-fixed flex items-center justify-center mb-6 shadow-lg shadow-primary/10">
+                <span class="material-symbols-outlined text-primary" style="font-size:48px">folder_open</span>
+            </div>
+            <h3 class="font-headline font-extrabold text-2xl text-primary mb-2">No projects yet</h3>
+            <p class="text-secondary max-w-sm mb-8 leading-relaxed">Create your first project and start organizing work into beautiful Kanban boards.</p>
+            <button onclick="openModal()"
+                class="btn-primary-gradient text-white px-8 py-3 rounded-2xl font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform">
+                Create your first project
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════════════════
+     CREATE PROJECT MODAL
+══════════════════════════════════════ -->
+<div id="modal" class="hidden fixed inset-0 z-50 modal-backdrop"
+    style="overflow-y:auto; padding:16px 8px;"
+    onclick="closeModalIfBg(event)">
+    <div id="modal-inner" style="pointer-events:none; min-height:100%; display:flex; align-items:flex-start; justify-content:center;">
+        <div class="modal-panel bg-surface-bright rounded-3xl shadow-2xl w-full max-w-md border border-white/40"
+            style="pointer-events:auto; flex-shrink:0;"
+            onclick="event.stopPropagation()">
+
+            <!-- Header -->
+            <div style="padding:20px 24px 12px; display:flex; align-items:flex-start; justify-content:space-between;">
+                <div>
+                    <h2 class="font-headline font-black text-xl text-primary" style="margin-bottom:2px;">New Project</h2>
+                    <p class="text-secondary" style="font-size:12px;">Let's define your next milestone.</p>
+                </div>
+                <button onclick="closeModal()" class="hover:bg-surface-container rounded-xl transition-colors text-secondary" style="padding:6px; flex-shrink:0;">
+                    <span class="material-symbols-outlined" style="font-size:20px">close</span>
+                </button>
+            </div>
+
+            <form method="POST" action="/project/create/">
+                {% csrf_token %}
+
+                <!-- Fields -->
+                <div style="padding:4px 24px 8px; display:flex; flex-direction:column; gap:14px;">
+
+                    <!-- Name -->
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest" style="margin-bottom:6px;">
+                            Project Name <span class="text-error">*</span>
+                        </label>
+                        <input type="text" name="name" required placeholder="e.g. วิชาคอมพิวเตอร์กราฟิก"
+                            class="input-inset w-full text-on-surface font-semibold placeholder:font-normal placeholder:text-outline" style="font-size:14px; padding:10px 16px;">
+                    </div>
+
+                    <!-- Category + Deadline -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div>
+                            <label class="block text-[10px] font-black text-outline uppercase tracking-widest" style="margin-bottom:6px;">Category</label>
+                            <div style="display:flex; gap:8px; align-items:flex-start;">
+                                <input type="hidden" name="category_id" id="categorySelect">
+                                <div class="kf-dd" id="createCatDd" style="flex:1;">
+                                    <div class="kf-dd-trigger" onclick="toggleKfDd('createCatDd')" id="createCatTrigger">
+                                        <span class="material-symbols-outlined" style="font-size:16px;color:#74777f">folder</span>
+                                        <span id="createCatLabel" style="flex:1;color:#74777f;font-weight:500;">— None —</span>
+                                        <span class="material-symbols-outlined kf-chevron">expand_more</span>
+                                    </div>
+                                    <div class="kf-dd-menu" id="createCatMenu">
+                                        <div class="kf-dd-item selected" data-value="" onclick="selectCreateCat('','— None —')">
+                                            <span class="kf-item-icon" style="background:#f2f4f6;">
+                                                <span class="material-symbols-outlined" style="font-size:15px;color:#74777f">remove_circle_outline</span>
+                                            </span>
+                                            <span style="color:#74777f;">— None —</span>
+                                        </div>
+                                        {% for cat in categories %}
+                                        <div class="kf-dd-item" data-value="{{ cat.id }}" onclick="selectCreateCat('{{ cat.id }}','{{ cat.name|escapejs }}')">
+                                            <span class="kf-item-icon" style="background:#eceeff;">
+                                                <span class="material-symbols-outlined" style="font-size:15px;color:#1a146b">folder</span>
+                                            </span>
+                                            {{ cat.name }}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <button type="button" onclick="openNewCatPanel()"
+                                    class="bg-primary-fixed hover:bg-primary-fixed-dim text-on-primary-fixed-variant rounded-xl flex items-center justify-center transition-colors" style="width:36px; height:36px; flex-shrink:0; margin-top:1px;">
+                                    <span class="material-symbols-outlined" style="font-size:18px">add</span>
+                                </button>
+                            </div>
+                            <!-- Inline new cat -->
+                            <div id="newCatPanel" style="display:none; margin-top:6px; gap:6px; align-items:center;">
+                                <input type="text" id="newCatInput" placeholder="Category name..."
+                                    class="input-inset text-on-surface" style="flex:1; font-size:12px; padding:7px 10px; min-width:0;">
+                                <button type="button" onclick="saveNewCategory()"
+                                    class="bg-primary text-white font-bold rounded-xl" style="font-size:11px; padding:7px 10px; flex-shrink:0; white-space:nowrap;">Save</button>
+                                <button type="button" onclick="closeNewCatPanel()"
+                                    class="bg-surface-container text-secondary font-bold rounded-xl" style="font-size:11px; padding:7px 8px; flex-shrink:0;">✕</button>
+                            </div>
+                            <p id="catMsg" style="display:none; font-size:10px; margin-top:4px;"></p>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-outline uppercase tracking-widest" style="margin-bottom:6px;">
+                                Deadline <span class="text-error">*</span>
+                            </label>
+                            <div style="position:relative;">
+                                <span class="material-symbols-outlined text-outline" style="font-size:15px; position:absolute; right:10px; top:50%; transform:translateY(-50%); pointer-events:none;">calendar_month</span>
+                                <input type="date" name="deadline" required
+                                    class="input-inset w-full text-on-surface font-semibold" style="font-size:13px; padding:9px 14px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest" style="margin-bottom:6px;">Status</label>
+                        <div style="display:flex; gap:8px;">
+                            {% for val, label in project.STATUS_CHOICES|default:"" %}{% endfor %}
+                            <label style="flex:1; cursor:pointer;">
+                                <input type="radio" name="status" value="active" checked class="sr-only peer">
+                                <div class="text-center rounded-xl border-2 border-surface-container text-xs font-bold text-secondary peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white transition-all" style="padding:8px 4px;">Active</div>
+                            </label>
+                            <label style="flex:1; cursor:pointer;">
+                                <input type="radio" name="status" value="on_hold" class="sr-only peer">
+                                <div class="text-center rounded-xl border-2 border-surface-container text-xs font-bold text-secondary peer-checked:border-error peer-checked:bg-error peer-checked:text-white transition-all" style="padding:8px 4px;">On Hold</div>
+                            </label>
+                            <label style="flex:1; cursor:pointer;">
+                                <input type="radio" name="status" value="completed" class="sr-only peer">
+                                <div class="text-center rounded-xl border-2 border-surface-container text-xs font-bold text-secondary peer-checked:border-on-tertiary-container peer-checked:bg-on-tertiary-container peer-checked:text-white transition-all" style="padding:8px 4px;">Completed</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest" style="margin-bottom:6px;">
+                            Description <span class="font-normal normal-case text-outline">(optional)</span>
+                        </label>
+                        <textarea name="description" rows="2" placeholder="Brief overview..."
+                            class="input-inset w-full text-on-surface resize-none placeholder:text-outline" style="font-size:14px; padding:10px 16px;"></textarea>
+                    </div>
+
+                </div><!-- /fields -->
+
+                <!-- Submit -->
+                <div style="padding:12px 24px 20px; border-top:1px solid #eceef0; margin-top:8px;">
+                    <button type="submit"
+                        class="w-full btn-primary-gradient text-white font-bold hover:scale-[1.01] transition-transform" style="padding:13px; border-radius:1rem; font-size:14px; box-shadow:0 8px 24px rgba(26,20,107,0.25);">
+                        🚀 Launch Project
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     EDIT PROJECT MODAL
+══════════════════════════════════════ -->
+<div id="editProjectModal" class="hidden fixed inset-0 z-50 modal-backdrop"
+    style="overflow-y:auto; padding:16px 8px;"
+    onclick="closeEditProjectIfBg(event)">
+    <div style="pointer-events:none; min-height:100%; display:flex; align-items:flex-start; justify-content:center;">
+        <div class="modal-panel bg-surface-bright rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-white/40"
+            style="pointer-events:auto; flex-shrink:0;"
+            onclick="event.stopPropagation()">
+
+            <div class="flex items-start justify-between p-8 pb-6">
+                <div>
+                    <h2 class="font-headline font-black text-3xl text-primary mb-1">Edit Project</h2>
+                    <p class="text-secondary">Update project details.</p>
+                </div>
+                <button onclick="closeEditProjectModal()" class="p-2 hover:bg-surface-container rounded-xl transition-colors text-secondary" style="flex-shrink:0;">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <form id="editProjectForm" method="POST">
+                {% csrf_token %}
+                <div class="px-8 pb-4 space-y-5">
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Project Name <span class="text-error">*</span></label>
+                        <input type="text" name="name" id="ep-name" required
+                            class="input-inset w-full px-4 py-3.5 text-on-surface font-semibold text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Category</label>
+                            <input type="hidden" name="category_id" id="ep-category">
+                            <div class="kf-dd" id="editCatDd">
+                                <div class="kf-dd-trigger" onclick="toggleKfDd('editCatDd')" id="editCatTrigger">
+                                    <span class="material-symbols-outlined" style="font-size:16px;color:#74777f" id="editCatIcon">folder</span>
+                                    <span id="editCatLabel" style="flex:1;color:#74777f;font-weight:500;">— None —</span>
+                                    <span class="material-symbols-outlined kf-chevron">expand_more</span>
+                                </div>
+                                <div class="kf-dd-menu" id="editCatMenu">
+                                    <div class="kf-dd-item" data-value="" onclick="selectEditCatDd('','— None —')">
+                                        <span class="kf-item-icon" style="background:#f2f4f6;">
+                                            <span class="material-symbols-outlined" style="font-size:15px;color:#74777f">remove_circle_outline</span>
+                                        </span>
+                                        <span style="color:#74777f;">— None —</span>
+                                    </div>
+                                    {% for cat in categories %}
+                                    <div class="kf-dd-item" data-value="{{ cat.id }}" onclick="selectEditCatDd('{{ cat.id }}','{{ cat.name|escapejs }}')">
+                                        <span class="kf-item-icon" style="background:#eceeff;">
+                                            <span class="material-symbols-outlined" style="font-size:15px;color:#1a146b">folder</span>
+                                        </span>
+                                        {{ cat.name }}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Deadline</label>
+                            <input type="date" name="deadline" id="ep-deadline"
+                                class="input-inset w-full px-4 py-2.5 text-on-surface text-sm font-semibold">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Status</label>
+                        <input type="hidden" name="status" id="ep-status" value="active">
+                        <div class="kf-dd" id="editStatusDd">
+                            <div class="kf-dd-trigger" onclick="toggleKfDd('editStatusDd')" id="editStatusTrigger">
+                                <span class="w-2 h-2 rounded-full flex-shrink-0" id="editStatusDot" style="background:#1a146b;"></span>
+                                <span id="editStatusLabel" style="flex:1;">Active</span>
+                                <span class="material-symbols-outlined kf-chevron">expand_more</span>
+                            </div>
+                            <div class="kf-dd-menu" id="editStatusMenu">
+                                <div class="kf-dd-item selected" data-value="active" onclick="selectEditStatus('active','Active','#1a146b')">
+                                    <span class="kf-item-icon" style="background:#eceeff;">
+                                        <span class="material-symbols-outlined" style="font-size:15px;color:#1a146b">play_circle</span>
+                                    </span>
+                                    Active
+                                </div>
+                                <div class="kf-dd-item" data-value="on_hold" onclick="selectEditStatus('on_hold','On Hold','#ba1a1a')">
+                                    <span class="kf-item-icon" style="background:#fff0ee;">
+                                        <span class="material-symbols-outlined" style="font-size:15px;color:#ba1a1a">pause_circle</span>
+                                    </span>
+                                    On Hold
+                                </div>
+                                <div class="kf-dd-item" data-value="completed" onclick="selectEditStatus('completed','Completed','#00432c')">
+                                    <span class="kf-item-icon" style="background:#e8f5ee;">
+                                        <span class="material-symbols-outlined" style="font-size:15px;color:#00432c">check_circle</span>
+                                    </span>
+                                    Completed
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Description</label>
+                        <textarea name="description" id="ep-description" rows="3"
+                            class="input-inset w-full px-4 py-3.5 text-on-surface text-sm resize-none"></textarea>
+                    </div>
+                </div>
+                <div class="px-8 pb-8 pt-4" style="border-top:1px solid #eceef0;">
+                    <button type="submit"
+                        class="w-full btn-primary-gradient text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[1.01] transition-transform">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MANAGE CATEGORIES MODAL -->
+<div id="manageCatModal" class="hidden fixed inset-0 z-50 modal-backdrop"
+    style="overflow-y:auto; padding:16px 8px;"
+    onclick="closeManageCatIfBg(event)">
+    <div style="pointer-events:none; min-height:100%; display:flex; align-items:flex-start; justify-content:center;">
+        <div class="modal-panel bg-surface-bright rounded-[2.5rem] shadow-2xl w-full max-w-md border border-white/40"
+            style="pointer-events:auto; flex-shrink:0;"
+            onclick="event.stopPropagation()">
+            <div class="flex items-start justify-between p-8 pb-6">
+                <div>
+                    <h2 class="font-headline font-black text-2xl text-primary mb-1">Categories</h2>
+                    <p class="text-secondary text-sm">Manage your project labels.</p>
+                </div>
+                <button onclick="closeManageCat()" class="p-2 hover:bg-surface-container rounded-xl transition-colors text-secondary">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="px-8 pb-8 space-y-4">
+                <div class="flex gap-2">
+                    <input type="text" id="newCatManageInput" placeholder="New category name..."
+                        class="input-inset flex-1 px-4 py-3 text-sm text-on-surface">
+                    <button onclick="addCategoryFromManage()"
+                        class="btn-primary-gradient text-white px-5 py-3 rounded-xl font-bold text-sm">Add</button>
+                </div>
+                <p id="manageCatMsg" class="text-[10px] hidden"></p>
+                <div id="catList" class="space-y-2 max-h-56 overflow-y-auto">
+                    <p class="text-sm text-secondary text-center py-4">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     CUSTOM CONFIRM MODAL
+══════════════════════════════════════ -->
+<div id="confirmModal" class="hidden fixed inset-0 z-[60] modal-backdrop flex items-center justify-center p-4">
+    <div class="modal-panel bg-surface-bright rounded-[2rem] shadow-2xl w-full max-w-sm border border-white/40">
+        <div class="p-7">
+            <div id="confirmIcon" class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <span id="confirmIconSymbol" class="material-symbols-outlined fill-icon" style="font-size:28px"></span>
+            </div>
+            <h3 id="confirmTitle" class="font-headline font-black text-xl text-primary text-center mb-2"></h3>
+            <p id="confirmBody" class="text-sm text-secondary text-center leading-relaxed mb-7"></p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()"
+                    class="flex-1 py-3 rounded-2xl text-sm font-bold border border-surface-container-high text-secondary hover:bg-surface-container transition-colors">
+                    ยกเลิก
+                </button>
+                <button id="confirmOkBtn"
+                    class="flex-1 py-3 rounded-2xl text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95 shadow-lg">
+                    ยืนยัน
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     CUSTOM ALERT MODAL (success/error)
+══════════════════════════════════════ -->
+<div id="alertModal" class="hidden fixed inset-0 z-[60] modal-backdrop flex items-center justify-center p-4">
+    <div class="modal-panel bg-surface-bright rounded-[2rem] shadow-2xl w-full max-w-sm border border-white/40">
+        <div class="p-7 text-center">
+            <div id="alertIcon" class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <span id="alertIconSymbol" class="material-symbols-outlined fill-icon" style="font-size:28px"></span>
+            </div>
+            <h3 id="alertTitle" class="font-headline font-black text-xl text-primary mb-2"></h3>
+            <p id="alertBody" class="text-sm text-secondary leading-relaxed mb-7"></p>
+            <button onclick="closeAlertModal()"
+                class="w-full py-3 rounded-2xl text-sm font-bold btn-primary-gradient text-white shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">
+                ตกลง
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     REQUEST UPGRADE ROLE MODAL
+══════════════════════════════════════ -->
+<div id="upgradeModal" class="hidden fixed inset-0 z-[60] modal-backdrop flex items-center justify-center p-4">
+    <div class="modal-panel bg-surface-bright rounded-[2rem] shadow-2xl w-full max-w-sm border border-white/40">
+        <div class="flex items-start justify-between p-6 pb-4">
+            <div>
+                <h3 class="font-headline font-black text-xl text-primary mb-1">ขอสิทธิ์เพิ่ม</h3>
+                <p class="text-sm text-secondary">โปรเจค: <span id="upgradeProjectName" class="font-semibold text-on-surface"></span></p>
+            </div>
+            <button onclick="closeUpgradeModal()" class="p-2 hover:bg-surface-container rounded-xl text-secondary transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="px-6 pb-6 space-y-4">
+            <p class="text-xs text-secondary">เลือก Role ที่ต้องการขอ:</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button class="upgrade-role-btn flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-surface-container bg-surface-container-low hover:border-primary/40 transition-all"
+                    data-role="member" onclick="selectUpgradeRole(this)">
+                    <span class="text-2xl">✏️</span>
+                    <span class="text-sm font-bold text-on-surface">Member</span>
+                    <span class="text-[10px] text-secondary text-center">ทำ task ได้ ดูข้อมูลได้</span>
+                </button>
+                <button class="upgrade-role-btn flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-surface-container bg-surface-container-low hover:border-primary/40 transition-all"
+                    data-role="admin" onclick="selectUpgradeRole(this)">
+                    <span class="text-2xl">⚡</span>
+                    <span class="text-sm font-bold text-on-surface">Admin</span>
+                    <span class="text-[10px] text-secondary text-center">จัดการโปรเจคได้ทุกอย่าง</span>
+                </button>
+            </div>
+            <p id="upgradeError" class="hidden text-xs text-error font-semibold text-center">กรุณาเลือก Role ที่ต้องการ</p>
+            <div class="flex gap-3 pt-1">
+                <button onclick="closeUpgradeModal()"
+                    class="flex-1 py-3 rounded-2xl text-sm font-bold border border-surface-container-high text-secondary hover:bg-surface-container transition-colors">
+                    ยกเลิก
+                </button>
+                <button onclick="submitUpgrade()"
+                    class="flex-1 py-3 rounded-2xl text-sm font-bold btn-primary-gradient text-white shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">
+                    ส่งคำขอ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // ── Modal helpers ──────────────────────────────────
+    function openModal()  {
+        const m = document.getElementById('modal');
+        m.classList.remove('hidden');
+        // ไม่ lock body — ให้ backdrop scroll ได้เอง
+    }
+    function closeModal() {
+        const m = document.getElementById('modal');
+        m.classList.add('hidden');
+    }
+    function closeModalIfBg(e) { if (e.target === document.getElementById('modal') || e.target === document.getElementById('modal-inner')) closeModal(); }
+
+    // ── Dropdown ──────────────────────────────────────
+    function toggleProjDrop(id) {
+        const el = document.getElementById(id);
+        el.classList.toggle('open');
+        document.querySelectorAll('.proj-dropdown').forEach(d => { if (d.id !== id) d.classList.remove('open'); });
+    }
+    document.addEventListener('click', e => {
+        // Close card dropdowns
+        document.querySelectorAll('.proj-dropdown').forEach(d => d.classList.remove('open'));
+        // Close custom dropdowns if clicked outside
+        if (!e.target.closest('.kf-dd')) {
+            document.querySelectorAll('.kf-dd-menu.show').forEach(m => {
+                m.classList.remove('show');
+                m.closest('.kf-dd')?.querySelector('.kf-dd-trigger')?.classList.remove('open');
+            });
+        }
+    });
+
+    // ── Custom Dropdown Engine ─────────────────────────
+    function toggleKfDd(ddId) {
+        const dd      = document.getElementById(ddId);
+        const trigger = dd.querySelector('.kf-dd-trigger');
+        const menu    = dd.querySelector('.kf-dd-menu');
+        const isOpen  = menu.classList.contains('show');
+        // Close all other kf dropdowns
+        document.querySelectorAll('.kf-dd-menu.show').forEach(m => {
+            if (m !== menu) {
+                m.classList.remove('show');
+                m.closest('.kf-dd')?.querySelector('.kf-dd-trigger')?.classList.remove('open');
+            }
+        });
+        menu.classList.toggle('show', !isOpen);
+        trigger.classList.toggle('open', !isOpen);
+    }
+
+    // Create modal — Category
+    function selectCreateCat(value, label) {
+        document.getElementById('categorySelect').value = value;
+        const lbl = document.getElementById('createCatLabel');
+        lbl.textContent = label;
+        lbl.style.color = value ? '#1a1c1e' : '#74777f';
+        document.querySelectorAll('#createCatMenu .kf-dd-item').forEach(i => i.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+        // Close menu
+        document.getElementById('createCatMenu').classList.remove('show');
+        document.getElementById('createCatTrigger').classList.remove('open');
+    }
+
+    // Edit modal — Category
+    function selectEditCatDd(value, label) {
+        document.getElementById('ep-category').value = value;
+        const lbl = document.getElementById('editCatLabel');
+        lbl.textContent = label;
+        lbl.style.color = value ? '#1a1c1e' : '#74777f';
+        document.querySelectorAll('#editCatMenu .kf-dd-item').forEach(i => i.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+        document.getElementById('editCatMenu').classList.remove('show');
+        document.getElementById('editCatTrigger').classList.remove('open');
+    }
+
+    // Edit modal — Status
+    function selectEditStatus(value, label, dotColor) {
+        document.getElementById('ep-status').value = value;
+        document.getElementById('editStatusLabel').textContent = label;
+        document.getElementById('editStatusDot').style.background = dotColor;
+        document.querySelectorAll('#editStatusMenu .kf-dd-item').forEach(i => i.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+        document.getElementById('editStatusMenu').classList.remove('show');
+        document.getElementById('editStatusTrigger').classList.remove('open');
+    }
+
+    // ── Edit Project ──────────────────────────────────
+    function openEditProject(id, name, desc, deadline, status, catId) {
+        document.getElementById('ep-name').value        = name;
+        document.getElementById('ep-description').value = desc;
+        document.getElementById('ep-deadline').value    = deadline || '';
+
+        // Sync status dropdown
+        const statusMap = { active: ['Active','#1a146b'], on_hold: ['On Hold','#ba1a1a'], completed: ['Completed','#00432c'] };
+        const [statusLbl, statusColor] = statusMap[status] || statusMap.active;
+        document.getElementById('ep-status').value = status || 'active';
+        document.getElementById('editStatusLabel').textContent = statusLbl;
+        document.getElementById('editStatusDot').style.background = statusColor;
+        document.querySelectorAll('#editStatusMenu .kf-dd-item').forEach(i =>
+            i.classList.toggle('selected', i.dataset.value === (status || 'active')));
+
+        // Sync category dropdown
+        const catVal = catId ? String(catId) : '';
+        document.getElementById('ep-category').value = catVal;
+        const catItem = document.querySelector(`#editCatMenu .kf-dd-item[data-value="${catVal}"]`);
+        const editCatLbl = document.getElementById('editCatLabel');
+        if (catItem && catVal) {
+            editCatLbl.textContent = catItem.textContent.trim();
+            editCatLbl.style.color = '#1a1c1e';
+        } else {
+            editCatLbl.textContent = '— None —';
+            editCatLbl.style.color = '#74777f';
+        }
+        document.querySelectorAll('#editCatMenu .kf-dd-item').forEach(i =>
+            i.classList.toggle('selected', i.dataset.value === catVal));
+
+        document.getElementById('editProjectForm').action = `/project/edit/${id}/`;
+        document.getElementById('editProjectModal').classList.remove('hidden');
+    }
+    function closeEditProjectModal() { document.getElementById('editProjectModal').classList.add('hidden'); }
+    function closeEditProjectIfBg(e) { if (e.target === document.getElementById('editProjectModal')) closeEditProjectModal(); }
+
+    // ══════════════════════════════════════════════════
+    //  Custom Modal Helpers
+    // ══════════════════════════════════════════════════
+    let _confirmCallback = null;
+
+    function showConfirm({ title, body, okLabel = 'ยืนยัน', danger = true, onOk }) {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmBody').textContent  = body;
+
+        const icon   = document.getElementById('confirmIcon');
+        const sym    = document.getElementById('confirmIconSymbol');
+        const okBtn  = document.getElementById('confirmOkBtn');
+
+        if (danger) {
+            icon.className  = 'w-14 h-14 rounded-2xl bg-error-container flex items-center justify-center mx-auto mb-5';
+            sym.className   = 'material-symbols-outlined fill-icon text-error';
+            sym.textContent = 'delete_forever';
+            okBtn.className = 'flex-1 py-3 rounded-2xl text-sm font-bold text-white bg-error hover:bg-error/90 transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-error/20';
+        } else {
+            icon.className  = 'w-14 h-14 rounded-2xl bg-secondary-container flex items-center justify-center mx-auto mb-5';
+            sym.className   = 'material-symbols-outlined fill-icon text-on-secondary-container';
+            sym.textContent = 'logout';
+            okBtn.className = 'flex-1 py-3 rounded-2xl text-sm font-bold text-white btn-primary-gradient transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-primary/20';
+        }
+
+        okBtn.textContent  = okLabel;
+        _confirmCallback   = onOk;
+        okBtn.onclick      = () => { closeConfirmModal(); onOk(); };
+
+        document.getElementById('confirmModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function showAlert({ title, body, success = true }) {
+        const icon = document.getElementById('alertIcon');
+        const sym  = document.getElementById('alertIconSymbol');
+
+        if (success) {
+            icon.className  = 'w-14 h-14 rounded-2xl bg-tertiary-fixed/20 flex items-center justify-center mx-auto mb-5';
+            sym.className   = 'material-symbols-outlined fill-icon text-on-tertiary-container';
+            sym.textContent = 'check_circle';
+        } else {
+            icon.className  = 'w-14 h-14 rounded-2xl bg-error-container flex items-center justify-center mx-auto mb-5';
+            sym.className   = 'material-symbols-outlined fill-icon text-error';
+            sym.textContent = 'error';
+        }
+
+        document.getElementById('alertTitle').textContent = title;
+        document.getElementById('alertBody').textContent  = body;
+        document.getElementById('alertModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAlertModal() {
+        document.getElementById('alertModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    // ── Delete Project ────────────────────────────────
+    function deleteProject(id, name) {
+        showConfirm({
+            title: `ลบโปรเจค "${name}"?`,
+            body: 'Tasks ทั้งหมดจะถูกลบอย่างถาวร ไม่สามารถกู้คืนได้',
+            okLabel: 'ลบเลย',
+            danger: true,
+            onOk: () => {
+                fetch(`/project/delete/${id}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+                }).then(r => r.json()).then(d => {
+                    if (d.status === 'ok') location.reload();
+                    else showAlert({ title: 'เกิดข้อผิดพลาด', body: d.error || 'ลบไม่สำเร็จ', success: false });
+                });
+            }
+        });
+    }
+
+    // ── Leave Shared Project ──────────────────────────
+    function leaveProject(id, name) {
+        showConfirm({
+            title: `ออกจากโปรเจค?`,
+            body: `คุณจะออกจาก "${name}" และไม่สามารถเข้าถึงได้อีกจนกว่า owner จะเชิญใหม่`,
+            okLabel: 'ออกจากโปรเจค',
+            danger: false,
+            onOk: () => {
+                fetch(`/project/${id}/leave/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+                }).then(r => r.json()).then(d => {
+                    if (d.status === 'ok') location.reload();
+                    else showAlert({ title: 'เกิดข้อผิดพลาด', body: d.error || 'ไม่สำเร็จ', success: false });
+                });
+            }
+        });
+    }
+
+    // ── Request Role Upgrade ──────────────────────────
+    let _upgradeProjectId = null;
+
+    function requestUpgrade(id, name) {
+        _upgradeProjectId = id;
+        document.getElementById('upgradeProjectName').textContent = name;
+        document.querySelectorAll('.upgrade-role-btn').forEach(b => b.classList.remove('selected-role'));
+        document.getElementById('upgradeModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeUpgradeModal() {
+        document.getElementById('upgradeModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function submitUpgrade() {
+        const selected = document.querySelector('.upgrade-role-btn.selected-role');
+        if (!selected) {
+            document.getElementById('upgradeError').classList.remove('hidden');
+            return;
+        }
+        document.getElementById('upgradeError').classList.add('hidden');
+        const role = selected.dataset.role;
+        const body = new URLSearchParams({ role });
+        fetch(`/project/${_upgradeProjectId}/request-upgrade/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: body.toString()
+        }).then(r => r.json()).then(d => {
+            closeUpgradeModal();
+            if (d.status === 'ok') showAlert({ title: 'ส่งคำขอสำเร็จ', body: d.message || 'Owner จะได้รับการแจ้งเตือน', success: true });
+            else showAlert({ title: 'เกิดข้อผิดพลาด', body: d.error || 'ไม่สำเร็จ', success: false });
+        });
+    }
+
+    // ── Category inline create ────────────────────────
+    function openNewCatPanel() {
+        const p = document.getElementById('newCatPanel');
+        p.style.display = 'flex';
+        setTimeout(() => document.getElementById('newCatInput').focus(), 50);
+    }
+    function closeNewCatPanel() {
+        document.getElementById('newCatPanel').style.display = 'none';
+        document.getElementById('newCatInput').value = '';
+        const msg = document.getElementById('catMsg');
+        msg.style.display = 'none';
+        msg.textContent = '';
+    }
+
+    function saveNewCategory() {
+        const input = document.getElementById('newCatInput');
+        const msg   = document.getElementById('catMsg');
+        const name  = input.value.trim();
+        if (!name) { input.focus(); return; }
+        fetch('/project/category/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: 'name=' + encodeURIComponent(name)
+        }).then(r => r.json()).then(data => {
+            if (data.error) {
+                msg.textContent = data.error;
+                msg.style.color = '#ba1a1a';
+                msg.style.display = 'block';
+                return;
+            }
+            // Add to both custom dropdown menus
+            _addCatToMenus(data.id, data.name);
+            // Select the new item in Create modal
+            document.getElementById('categorySelect').value = data.id;
+            const lbl = document.getElementById('createCatLabel');
+            lbl.textContent = data.name;
+            lbl.style.color = '#1a1c1e';
+            document.querySelectorAll('#createCatMenu .kf-dd-item').forEach(i => i.classList.remove('selected'));
+            document.querySelector(`#createCatMenu .kf-dd-item[data-value="${data.id}"]`)?.classList.add('selected');
+
+            msg.textContent = '✓ Category created!';
+            msg.style.color = '#14ba82';
+            msg.style.display = 'block';
+            setTimeout(closeNewCatPanel, 1200);
+        }).catch(() => {
+            msg.textContent = 'Error — please try again.';
+            msg.style.color = '#ba1a1a';
+            msg.style.display = 'block';
+        });
+    }
+
+    // ── Manage Categories ─────────────────────────────
+    function openManageCat() { document.getElementById('manageCatModal').classList.remove('hidden'); loadCategoryList(); }
+    function closeManageCat() { document.getElementById('manageCatModal').classList.add('hidden'); }
+    function closeManageCatIfBg(e) { if (e.target === document.getElementById('manageCatModal')) closeManageCat(); }
+
+    function loadCategoryList() {
+        fetch('/project/category/list/').then(r => r.json()).then(data => {
+            const list = document.getElementById('catList');
+            if (!data.categories.length) { list.innerHTML='<p class="text-sm text-secondary text-center py-6">No categories yet.</p>'; return; }
+            list.innerHTML = data.categories.map(cat => `
+                <div id="cat-row-${cat.id}" class="flex items-center gap-2 bg-surface-container-low rounded-2xl px-4 py-3">
+                    <span class="material-symbols-outlined text-secondary" style="font-size:16px">label</span>
+                    <span id="cat-label-${cat.id}" class="flex-1 text-sm font-semibold text-on-surface">${cat.name}</span>
+                    <input id="cat-input-${cat.id}" type="text" value="${cat.name}"
+                        class="hidden flex-1 px-2 py-1 bg-white border-b-2 border-primary rounded-lg text-sm text-on-surface focus:outline-none">
+                    <div id="cat-btns-${cat.id}" class="flex gap-1">
+                        <button onclick="startEditCat(${cat.id})" class="w-7 h-7 rounded-lg hover:bg-surface-container flex items-center justify-center text-secondary hover:text-primary">
+                            <span class="material-symbols-outlined" style="font-size:15px">edit</span>
+                        </button>
+                        <button onclick="deleteCat(${cat.id},'${cat.name.replace(/'/g,"\\'")}')" class="w-7 h-7 rounded-lg hover:bg-error-container/50 flex items-center justify-center text-secondary hover:text-error">
+                            <span class="material-symbols-outlined" style="font-size:15px">delete</span>
+                        </button>
+                    </div>
+                    <div id="cat-save-${cat.id}" class="hidden flex gap-1">
+                        <button onclick="saveEditCat(${cat.id})" class="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white">
+                            <span class="material-symbols-outlined" style="font-size:15px">check</span>
+                        </button>
+                        <button onclick="cancelEditCat(${cat.id},'${cat.name.replace(/'/g,"\\'")}')" class="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
+                            <span class="material-symbols-outlined" style="font-size:15px">close</span>
+                        </button>
+                    </div>
+                </div>`).join('');
+        });
+    }
+
+    function startEditCat(id) {
+        document.getElementById(`cat-label-${id}`).classList.add('hidden');
+        document.getElementById(`cat-input-${id}`).classList.remove('hidden');
+        document.getElementById(`cat-btns-${id}`).classList.add('hidden');
+        document.getElementById(`cat-save-${id}`).classList.remove('hidden');
+        document.getElementById(`cat-input-${id}`).focus();
+    }
+    function cancelEditCat(id, name) {
+        document.getElementById(`cat-input-${id}`).value = name;
+        document.getElementById(`cat-label-${id}`).classList.remove('hidden');
+        document.getElementById(`cat-input-${id}`).classList.add('hidden');
+        document.getElementById(`cat-btns-${id}`).classList.remove('hidden');
+        document.getElementById(`cat-save-${id}`).classList.add('hidden');
+    }
+    function saveEditCat(id) {
+        const name = document.getElementById(`cat-input-${id}`).value.trim();
+        if (!name) return;
+        fetch(`/project/category/${id}/edit/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: 'name=' + encodeURIComponent(name)
+        }).then(r => r.json()).then(data => {
+            if (data.error) { showAlert({ title: 'เกิดข้อผิดพลาด', body: data.error, success: false }); return; }
+            loadCategoryList();
+            // Update dropdown item text in both menus
+            document.querySelectorAll(`.kf-dd-item[data-value="${id}"]`).forEach(item => {
+                const textNode = item.lastChild;
+                if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                    textNode.textContent = data.name;
+                } else {
+                    // rebuild just the text part
+                    item.innerHTML = item.innerHTML.replace(/<\/span>[^<]*$/, `</span>${data.name}`);
+                }
+            });
+        });
+    }
+    function deleteCat(id, name) {
+        showConfirm({
+            title: `ลบ Category "${name}"?`,
+            body: 'โปรเจคที่ใช้ category นี้จะถูกตั้งค่าเป็นไม่มี category',
+            okLabel: 'ลบเลย',
+            danger: true,
+            onOk: () => {
+                fetch(`/project/category/${id}/delete/`, { method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'} })
+                    .then(r => r.json()).then(data => {
+                        if (data.status === 'ok') {
+                            loadCategoryList();
+                            document.querySelectorAll(`.kf-dd-item[data-value="${id}"]`).forEach(i => i.remove());
+                            const url = new URL(window.location);
+                            if (url.searchParams.get('category') == id) window.location.href = '/';
+                        }
+                    });
+            }
+        });
+    }
+    // Helper: add a new category item to both custom dropdown menus
+    function _addCatToMenus(id, name) {
+        ['createCatMenu','editCatMenu'].forEach(menuId => {
+            const menu = document.getElementById(menuId);
+            if (!menu || menu.querySelector(`[data-value="${id}"]`)) return;
+            const isCreate = menuId === 'createCatMenu';
+            const fn = isCreate ? 'selectCreateCat' : 'selectEditCatDd';
+            const item = document.createElement('div');
+            item.className = 'kf-dd-item';
+            item.dataset.value = id;
+            item.setAttribute('onclick', `${fn}('${id}','${name.replace(/'/g,"\\'")}')`);
+            item.innerHTML = `
+                <span class="kf-item-icon" style="background:#eceeff;">
+                    <span class="material-symbols-outlined" style="font-size:15px;color:#1a146b">folder</span>
+                </span>${name}`;
+            menu.appendChild(item);
+        });
+    }
+
+    function addCategoryFromManage() {
+        const input = document.getElementById('newCatManageInput');
+        const msg   = document.getElementById('manageCatMsg');
+        const name  = input.value.trim();
+        if (!name) return;
+        fetch('/project/category/', {
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':'{{ csrf_token }}'},
+            body:'name='+encodeURIComponent(name)
+        }).then(r=>r.json()).then(data=>{
+            if (data.error) { msg.textContent=data.error; msg.style.color='#ba1a1a'; msg.classList.remove('hidden'); return; }
+            msg.textContent=data.created?`✓ "${data.name}" added!`:`"${data.name}" already exists.`;
+            msg.style.color=data.created?'#14ba82':'#ba1a1a'; msg.classList.remove('hidden');
+            input.value=''; loadCategoryList();
+            if (data.created) _addCatToMenus(data.id, data.name);
+            setTimeout(()=>msg.classList.add('hidden'), 2000);
+        });
+    }
+
+    // ── Search filter ─────────────────────────────────
+    function filterProjects(query) {
+        const q = query.toLowerCase().trim();
+        document.querySelectorAll('.project-card').forEach(card => {
+            const name = card.querySelector('h3')?.textContent.toLowerCase() || '';
+            const desc = card.querySelector('p')?.textContent.toLowerCase() || '';
+            card.style.display = (!q || name.includes(q) || desc.includes(q)) ? '' : 'none';
+        });
+    }
+
+    // ── View toggle ───────────────────────────────────
+    function setView(type) {
+        const grid = document.getElementById('projectGrid');
+        const gBtn = document.getElementById('gridBtn');
+        const lBtn = document.getElementById('listBtn');
+        if (type === 'grid') {
+            grid.className = 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5';
+            gBtn.classList.add('bg-surface-container-lowest', 'shadow-sm', 'text-primary');
+            lBtn.classList.remove('bg-surface-container-lowest', 'shadow-sm', 'text-primary');
+        } else {
+            grid.className = 'flex flex-col gap-4';
+            lBtn.classList.add('bg-surface-container-lowest', 'shadow-sm', 'text-primary');
+            gBtn.classList.remove('bg-surface-container-lowest', 'shadow-sm', 'text-primary');
+        }
+    }
+
+    // ── Upgrade role button selection ─────────────────
+    function selectUpgradeRole(btn) {
+        document.querySelectorAll('.upgrade-role-btn').forEach(b => {
+            b.classList.remove('selected-role', 'border-primary', 'bg-primary-fixed');
+            b.classList.add('border-surface-container', 'bg-surface-container-low');
+        });
+        btn.classList.add('selected-role', 'border-primary', 'bg-primary-fixed');
+        btn.classList.remove('border-surface-container', 'bg-surface-container-low');
+        document.getElementById('upgradeError').classList.add('hidden');
+    }
+
+    // ── Keyboard shortcuts ────────────────────────────
+    document.addEventListener('keydown', e => {
+        const isTyping = ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName);
+        if (e.key === 'Escape') { closeModal(); closeEditProjectModal(); closeManageCat(); closeConfirmModal(); closeAlertModal(); closeUpgradeModal(); }
+        if (e.ctrlKey && e.key === 'n') { e.preventDefault(); openModal(); }
+        if (e.ctrlKey && e.key === 'k') { e.preventDefault(); document.getElementById('projectSearch')?.focus(); }
+        if (e.ctrlKey && e.key === 'Enter' && isTyping) { e.target.closest('form')?.requestSubmit(); }
+    });
+
+    // ── Filter Bar Drag Prevention ───────────────────────────────
+    document.addEventListener("DOMContentLoaded", function () {
+        const filterBar = document.querySelector(".filter-bar");
+
+        if (filterBar) {
+            filterBar.addEventListener("dragstart", function (e) {
+                e.preventDefault();
+            });
+        }
+    });
+</script>
+{% endblock %}

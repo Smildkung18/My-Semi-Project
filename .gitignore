@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────
+#  KanFlow — .gitignore
+# ─────────────────────────────────────────────────────────
+
+# Environment variables — ห้าม commit เด็ดขาด
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+*.log
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

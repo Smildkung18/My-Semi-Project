@@ -1,0 +1,786 @@
+{% extends "projects/base.html" %}
+{% block title %}Settings — KanFlow{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block extra_head %}
+<style>
+    .section-label {
+        display: inline-block; width: 3px; height: 20px;
+        background: linear-gradient(180deg, #1a146b, #5654a8);
+        border-radius: 2px; margin-right: 10px; vertical-align: middle;
+    }
+    .input-inset {
+        background: #f2f4f6; border: none;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease; border-radius: 0.75rem;
+        width: 100%; padding: 12px 16px;
+        font-size: 14px; color: #191c1e; font-weight: 500;
+    }
+    .input-inset:focus {
+        outline: none; border-bottom-color: #1a146b;
+        background: #ffffff; box-shadow: none;
+    }
+    .input-inset::placeholder { color: #777682; font-weight: 400; }
+
+    /* Avatar upload */
+    .avatar-ring { position: relative; cursor: pointer; border-radius: 1rem; overflow: hidden; }
+    .avatar-ring:hover .avatar-overlay { opacity: 1; }
+    .avatar-overlay {
+        position: absolute; inset: 0;
+        background: rgba(26,20,107,0.6);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        opacity: 0; transition: opacity 0.2s ease; gap: 3px; border-radius: 1rem;
+    }
+    @keyframes pop { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+    .avatar-pop { animation: pop 0.3s ease; }
+
+    /* Password strength */
+    .strength-bar { height: 3px; border-radius: 9999px; transition: all 0.3s ease; }
+    
+    /* Legal links protection */
+    .legal-links a {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-drag: none;
+        -webkit-user-drag: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-3 sm:px-6 lg:px-10 py-4 sm:py-8 max-w-3xl mx-auto space-y-4 sm:space-y-6">
+
+    <div class="mb-8">
+        <h2 class="font-headline font-extrabold text-3xl text-primary mb-1">Account Settings</h2>
+        <p class="text-secondary text-sm">Manage your personal information, security preferences, and account health.</p>
+    </div>
+
+    <!-- Alerts -->
+    {% if messages %}
+        <div class="mb-6">
+            {% for message in messages %}
+                <div class="p-4 rounded-xl {% if message.tags == 'error' %}bg-red-50 border border-red-200 text-red-800{% else %}bg-green-50 border border-green-200 text-green-800{% endif %}">
+                    <p class="text-sm font-medium">{{ message }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% if success %}
+    <div class="flex items-center gap-3 bg-tertiary-fixed/20 border border-on-tertiary-container/20 rounded-2xl p-4">
+        <span class="material-symbols-outlined text-on-tertiary-container fill-icon">check_circle</span>
+        <p class="text-sm font-semibold text-on-tertiary-container">{{ success }}</p>
+    </div>
+    {% endif %}
+    {% if error %}
+    <div class="flex items-center gap-3 bg-error-container rounded-2xl p-4">
+        <span class="material-symbols-outlined text-on-error-container fill-icon">error</span>
+        <p class="text-sm font-semibold text-on-error-container">{{ error }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Profile Information -->
+    <div class="bg-surface-container-lowest rounded-3xl shadow-card overflow-hidden">
+        <div class="px-8 py-6 border-b border-surface-container">
+            <h3 class="font-headline font-bold text-lg text-primary flex items-center">
+                <span class="section-label"></span> Profile Information
+            </h3>
+        </div>
+        <form method="POST" action="/settings/" enctype="multipart/form-data" class="px-8 py-7">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="profile">
+
+            <div class="flex flex-col sm:flex-row items-start gap-4 sm:gap-8 mb-5 sm:mb-6">
+                <!-- Avatar -->
+                <div class="shrink-0 text-center">
+                    <label for="avatarInput" class="avatar-ring block w-24 h-24 sm:w-32 sm:h-32">
+                        {% if request.user.profile.avatar %}
+                        <img id="avatarPreview" src="{{ request.user.profile.avatar.url }}"
+                            class="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-cover" alt="avatar">
+                        {% else %}
+                        <div id="avatarInitial"
+                            class="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl btn-primary-gradient flex items-center justify-center text-white font-headline font-extrabold text-3xl sm:text-4xl shadow-lg shadow-primary/20">
+                            {{ request.user.profile.display_name|default:request.user.username|slice:":1"|upper }}
+                        </div>
+                        <img id="avatarPreview" src="" class="w-32 h-32 rounded-2xl object-cover hidden" alt="preview">
+                        {% endif %}
+                        <div class="avatar-overlay">
+                            <span class="material-symbols-outlined text-white fill-icon">photo_camera</span>
+                            <span class="text-white text-[10px] font-bold">Change</span>
+                        </div>
+                    </label>
+                    <input type="file" id="avatarInput" name="avatar" accept="image/*" class="hidden" onchange="previewAvatar(this)">
+                    <p class="text-[10px] text-secondary mt-2">Avatar Size Max 2MB</p>
+                </div>
+
+                <!-- Fields -->
+                <div class="flex-1 space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Username</label>
+                        <input type="text" name="username" value="{{ request.user.username }}" 
+                            placeholder="ชื่อผู้ใช้สำหรับเข้าสู่ระบบ" class="input-inset" readonly>
+                        <p class="text-[10px] text-secondary mt-1">ชื่อผู้ใช้ไม่สามารถเปลี่ยนแปลงได้</p>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Display Name</label>
+                        <input type="text" name="display_name"
+                            value="{{ request.user.profile.display_name|default:request.user.username }}"
+                            placeholder="ชื่อที่ต้องการให้แสดงในระบบ" class="input-inset" required>
+                        <p class="text-[10px] text-secondary mt-1">ชื่อนี้ต้องไม่ซ้ำกับผู้ใช้อื่น</p>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Name/Surname</label>
+                        <div class="grid grid-cols-1 xs:grid-cols-2 gap-3">
+                            <input type="text" name="name" value="{{ request.user.profile.name }}"
+                                placeholder="First name" class="input-inset">
+                            <input type="text" name="surname" value="{{ request.user.profile.surname }}"
+                                placeholder="Last name" class="input-inset">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Email Address</label>
+                        <input type="email" name="email" value="{{ request.user.email }}"
+                            placeholder="your@email.com" class="input-inset">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-4">Gender</label>
+                        <div class="flex gap-2 flex-wrap">
+                            <label class="gender-card cursor-pointer group">
+                                <input type="radio" name="gender" value="male" 
+                                    {% if request.user.profile.gender == 'male' %}checked{% endif %}
+                                    onchange="this.form.submit()"
+                                    class="hidden">
+                                <div class="relative p-2 rounded-lg border-2 border-slate-200 transition-all duration-200 
+                                           group-hover:border-brand-300 group-hover:shadow-sm
+                                           {% if request.user.profile.gender == 'male' %}border-brand-500 bg-brand-50 shadow-sm{% endif %}">
+                                    <div class="flex items-center gap-1.5">
+                                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center 
+                                                   group-hover:bg-blue-100 transition-colors
+                                                   {% if request.user.profile.gender == 'male' %}bg-blue-500 text-white{% endif %}">
+                                            <i data-lucide="user" class="w-4 h-4"></i>
+                                        </div>
+                                        <span class="text-xs font-medium text-slate-700 
+                                                 {% if request.user.profile.gender == 'male' %}text-blue-700{% endif %}">Male</span>
+                                    </div>
+                                    {% if request.user.profile.gender == 'male' %}
+                                    <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-blue-500 flex items-center justify-center">
+                                        <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </label>
+                            
+                            <label class="gender-card cursor-pointer group">
+                                <input type="radio" name="gender" value="female" 
+                                    {% if request.user.profile.gender == 'female' %}checked{% endif %}
+                                    onchange="this.form.submit()"
+                                    class="hidden">
+                                <div class="relative p-2 rounded-lg border-2 border-slate-200 transition-all duration-200 
+                                           group-hover:border-brand-300 group-hover:shadow-sm
+                                           {% if request.user.profile.gender == 'female' %}border-brand-500 bg-brand-50 shadow-sm{% endif %}">
+                                    <div class="flex items-center gap-1.5">
+                                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center 
+                                                   group-hover:bg-pink-100 transition-colors
+                                                   {% if request.user.profile.gender == 'female' %}bg-pink-500 text-white{% endif %}">
+                                            <i data-lucide="user-round" class="w-4 h-4"></i>
+                                        </div>
+                                        <span class="text-xs font-medium text-slate-700 
+                                                 {% if request.user.profile.gender == 'female' %}text-pink-700{% endif %}">Female</span>
+                                    </div>
+                                    {% if request.user.profile.gender == 'female' %}
+                                    <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-pink-500 flex items-center justify-center">
+                                        <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </label>
+                            
+                            <label class="gender-card cursor-pointer group">
+                                <input type="radio" name="gender" value="lgbtq_plus" 
+                                    {% if request.user.profile.gender == 'lgbtq_plus' %}checked{% endif %}
+                                    onchange="this.form.submit()"
+                                    class="hidden">
+                                <div class="relative p-2 rounded-lg border-2 border-slate-200 transition-all duration-200 
+                                           group-hover:border-brand-300 group-hover:shadow-sm
+                                           {% if request.user.profile.gender == 'lgbtq_plus' %}border-brand-500 bg-brand-50 shadow-sm{% endif %}">
+                                    <div class="flex items-center gap-1.5">
+                                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center 
+                                                   group-hover:bg-gradient-to-br group-hover:from-red-100 group-hover:to-yellow-100 transition-all
+                                                   {% if request.user.profile.gender == 'lgbtq_plus' %}bg-gradient-to-br from-red-500 to-yellow-500 text-white{% endif %}">
+                                            <i data-lucide="users" class="w-4 h-4"></i>
+                                        </div>
+                                        <span class="text-xs font-medium text-slate-700 
+                                                 {% if request.user.profile.gender == 'lgbtq_plus' %}text-purple-700{% endif %}">LGBTQ+</span>
+                                    </div>
+                                    {% if request.user.profile.gender == 'lgbtq_plus' %}
+                                    <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-gradient-to-br from-red-500 to-yellow-500 flex items-center justify-center">
+                                        <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </label>
+                            
+                            <label class="gender-card cursor-pointer group">
+                                <input type="radio" name="gender" value="prefer_not_to_say" 
+                                    {% if request.user.profile.gender == 'prefer_not_to_say' %}checked{% endif %}
+                                    onchange="this.form.submit()"
+                                    class="hidden">
+                                <div class="relative p-2 rounded-lg border-2 border-slate-200 transition-all duration-200 
+                                           group-hover:border-brand-300 group-hover:shadow-sm
+                                           {% if request.user.profile.gender == 'prefer_not_to_say' %}border-brand-500 bg-brand-50 shadow-sm{% endif %}">
+                                    <div class="flex items-center gap-1.5">
+                                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center 
+                                                   group-hover:bg-slate-200 transition-colors
+                                                   {% if request.user.profile.gender == 'prefer_not_to_say' %}bg-slate-500 text-white{% endif %}">
+                                            <i data-lucide="eye-off" class="w-4 h-4"></i>
+                                        </div>
+                                        <span class="text-xs font-medium text-slate-700 
+                                                 {% if request.user.profile.gender == 'prefer_not_to_say' %}text-slate-700{% endif %}">Prefer not to say</span>
+                                    </div>
+                                    {% if request.user.profile.gender == 'prefer_not_to_say' %}
+                                    <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-slate-500 flex items-center justify-center">
+                                        <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <!-- Delay warning message -->
+                        <div id="genderDelayWarning" class="hidden mt-2 text-xs text-red-600 font-medium">
+                            <span class="inline-flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                <span id="delayCountdown">Please wait 15 seconds before changing gender again...</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Bio</label>
+                        <textarea name="bio" rows="3" placeholder="Tell your team about yourself..."
+                            class="input-inset resize-none" style="height:auto">{{ request.user.profile.bio }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="this.closest('form').reset()"
+                    class="px-5 py-2.5 bg-surface-container hover:bg-surface-container-high text-secondary font-bold text-sm rounded-xl transition-colors">
+                    Discard
+                </button>
+                <button type="submit"
+                    class="btn-primary-gradient text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.01] transition-transform">
+                    Save Profile
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Security & Privacy -->
+    <div class="bg-surface-container-lowest rounded-3xl shadow-card overflow-hidden">
+        <div class="px-8 py-6 border-b border-surface-container">
+            <h3 class="font-headline font-bold text-lg text-primary flex items-center">
+                <span class="section-label"></span> Security & Privacy
+            </h3>
+        </div>
+        <form method="POST" action="/settings/" class="px-8 py-7 space-y-5">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="password">
+
+            <div>
+                <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Current Password</label>
+                <div class="relative">
+                    <input type="password" name="old_password" id="oldPw" required class="input-inset pr-12">
+                    <button type="button" onclick="togglePw('oldPw','eye0')"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors">
+                        <span class="material-symbols-outlined" id="eye0" style="font-size:18px">visibility</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">New Password</label>
+                    <div class="relative">
+                        <input type="password" name="new_password" id="newPw" required
+                            class="input-inset pr-12" oninput="checkStrength(this.value)">
+                        <button type="button" onclick="togglePw('newPw','eye1')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors">
+                            <span class="material-symbols-outlined" id="eye1" style="font-size:18px">visibility</span>
+                        </button>
+                    </div>
+                    <div class="flex gap-1 mt-2">
+                        <div id="s1" class="strength-bar flex-1 bg-surface-container-high"></div>
+                        <div id="s2" class="strength-bar flex-1 bg-surface-container-high"></div>
+                        <div id="s3" class="strength-bar flex-1 bg-surface-container-high"></div>
+                        <div id="s4" class="strength-bar flex-1 bg-surface-container-high"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black text-outline uppercase tracking-widest mb-2">Confirm New Password</label>
+                    <div class="relative">
+                        <input type="password" name="confirm_password" id="confirmPw" required
+                            class="input-inset pr-12" oninput="checkMatch()">
+                        <button type="button" onclick="togglePw('confirmPw','eye2')"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors">
+                            <span class="material-symbols-outlined" id="eye2" style="font-size:18px">visibility</span>
+                        </button>
+                    </div>
+                    <p id="matchLabel" class="text-[10px] mt-1 hidden"></p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <a href="/password-reset/" 
+                   class="px-6 py-2.5 bg-surface-container hover:bg-surface-container-high text-secondary font-bold text-sm rounded-xl transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined" style="font-size:16px">help</span>
+                    Forgot password?
+                </a>
+                <button type="submit"
+                    class="btn-primary-gradient text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.01] transition-transform">
+                    Update Password
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="bg-surface-container-lowest rounded-3xl shadow-card overflow-hidden border border-error/20">
+        <div class="px-8 py-6 border-b border-error/10">
+            <h3 class="font-headline font-bold text-lg text-error flex items-center">
+                <span class="inline-block w-0.5 h-5 bg-error rounded mr-3"></span>
+                Danger Zone
+            </h3>
+        </div>
+        <div class="px-8 py-7 flex items-center justify-between gap-6">
+            <div>
+                <p class="font-semibold text-on-surface mb-1">Delete Account</p>
+                <p class="text-sm text-secondary">Once you delete your account, there is no going back. All projects, tasks, and historical data will be permanently erased. Please be certain.</p>
+            </div>
+            <form method="POST" action="/settings/delete/" onsubmit="return confirm('This cannot be undone. Are you sure?')">
+                {% csrf_token %}
+                <button type="submit"
+                    class="shrink-0 flex items-center gap-2 bg-error text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity shadow-lg shadow-error/20">
+                    <span class="material-symbols-outlined fill-icon" style="font-size:16px">delete_forever</span>
+                    Delete My Account
+                </button>
+            </form>
+        </div>
+        <div class="px-8 py-4 border-t border-surface-container text-center">
+            <p class="text-xs text-secondary legal-links">
+                <a href="/privacy/" class="hover:text-primary transition-colors" draggable="false">Privacy Policy</a>
+                <span class="mx-2 text-outline-variant">·</span>
+                <a href="/terms/" class="hover:text-primary transition-colors" draggable="false">Terms of Service</a>
+            </p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function previewAvatar(input) {
+        if (!input.files || !input.files[0]) return;
+        if (input.files[0].size > 2*1024*1024) { alert('Max 2MB'); input.value=''; return; }
+        const reader = new FileReader();
+        reader.onload = e => {
+            const p = document.getElementById('avatarPreview');
+            const i = document.getElementById('avatarInitial');
+            p.src = e.target.result; p.classList.remove('hidden');
+            if (i) i.classList.add('hidden');
+            p.classList.add('avatar-pop'); setTimeout(()=>p.classList.remove('avatar-pop'), 400);
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+
+    function togglePw(id, iconId) {
+        const input = document.getElementById(id);
+        const icon  = document.getElementById(iconId);
+        input.type  = input.type==='password' ? 'text' : 'password';
+        icon.textContent = input.type==='password' ? 'visibility' : 'visibility_off';
+    }
+
+    function checkStrength(pw) {
+        let s = 0;
+        if (pw.length >= 8) s++;
+        if (/[A-Z]/.test(pw)) s++;
+        if (/[0-9]/.test(pw)) s++;
+        if (/[^A-Za-z0-9]/.test(pw)) s++;
+        const colors = ['','#ba1a1a','#f59e0b','#5654a8','#4edea3'];
+        for (let i=1;i<=4;i++) document.getElementById('s'+i).style.background = i<=s ? colors[s] : '#e6e8ea';
+    }
+
+    function checkMatch() {
+        const pw = document.getElementById('newPw').value;
+        const cf = document.getElementById('confirmPw').value;
+        const lbl = document.getElementById('matchLabel');
+        if (!cf) { lbl.classList.add('hidden'); return; }
+        lbl.classList.remove('hidden');
+        lbl.textContent = pw===cf ? '✓ Passwords match' : '✗ Passwords do not match';
+        lbl.style.color = pw===cf ? '#005236' : '#ba1a1a';
+    }
+</script>}
+
+<!-- Complete AJAX form handling -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize UI based on current gender value
+        const currentGender = document.querySelector('input[name="gender"]:checked');
+        if (currentGender) {
+            updateGenderUI(currentGender.value);
+        }
+        
+        // Auto-save gender when selection changes with debounce
+        const genderInputs = document.querySelectorAll('input[name="gender"]');
+        let genderTimeout;
+        let countdownInterval;
+        let isDelayActive = false;
+        let lastChangeTime = 0;
+        
+        // Load delay state from localStorage
+        function loadDelayState() {
+            const savedState = localStorage.getItem('genderDelayState');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                const currentTime = Date.now();
+                const timeSinceLastChange = currentTime - state.lastChangeTime;
+                
+                if (timeSinceLastChange < 15000) {
+                    // Still within cooldown period
+                    isDelayActive = true;
+                    lastChangeTime = state.lastChangeTime;
+                    const remainingTime = Math.ceil((15000 - timeSinceLastChange) / 1000);
+                    showDelayWarning();
+                    updateCountdown(remainingTime);
+                    
+                    // Continue countdown
+                    let countdown = remainingTime;
+                    countdownInterval = setInterval(() => {
+                        countdown--;
+                        updateCountdown(countdown);
+                        
+                        if (countdown <= 0) {
+                            clearInterval(countdownInterval);
+                            hideDelayWarning();
+                            isDelayActive = false;
+                            localStorage.removeItem('genderDelayState');
+                        }
+                    }, 1000);
+                } else {
+                    // Cooldown expired, clear state
+                    localStorage.removeItem('genderDelayState');
+                }
+            }
+        }
+        
+        // Save delay state to localStorage
+        function saveDelayState() {
+            const state = {
+                lastChangeTime: lastChangeTime,
+                isDelayActive: isDelayActive
+            };
+            localStorage.setItem('genderDelayState', JSON.stringify(state));
+        }
+        
+        // Load state on page load
+        loadDelayState();
+        
+        genderInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                const currentTime = Date.now();
+                const timeSinceLastChange = currentTime - lastChangeTime;
+                
+                // Check if within 15 seconds cooldown
+                if (isDelayActive && timeSinceLastChange < 15000) {
+                    // Prevent change and show warning
+                    event.preventDefault();
+                    const currentGender = document.querySelector('input[name="gender"]:checked');
+                    if (currentGender && currentGender.value !== this.value) {
+                        // Revert to previous selection
+                        this.checked = false;
+                        currentGender.checked = true;
+                    }
+                    showDelayWarning();
+                    updateCountdown(Math.ceil((15000 - timeSinceLastChange) / 1000));
+                    return;
+                }
+                
+                // Allow change and save immediately
+                updateGenderUI(this.value);
+                saveGenderOnly();
+                
+                // Start cooldown for next change
+                isDelayActive = true;
+                lastChangeTime = currentTime;
+                saveDelayState(); // Save to localStorage
+                showDelayWarning();
+                
+                let countdown = 15;
+                updateCountdown(countdown);
+                
+                countdownInterval = setInterval(() => {
+                    countdown--;
+                    updateCountdown(countdown);
+                    
+                    if (countdown <= 0) {
+                        clearInterval(countdownInterval);
+                        hideDelayWarning();
+                        isDelayActive = false;
+                        localStorage.removeItem('genderDelayState'); // Clear state
+                    }
+                }, 1000);
+            });
+        });
+        
+        function showDelayWarning() {
+            const warning = document.getElementById('genderDelayWarning');
+            if (warning) {
+                warning.classList.remove('hidden');
+            }
+        }
+        
+        function hideDelayWarning() {
+            const warning = document.getElementById('genderDelayWarning');
+            if (warning) {
+                warning.classList.add('hidden');
+            }
+        }
+        
+        function updateCountdown(seconds) {
+            const countdown = document.getElementById('delayCountdown');
+            if (countdown) {
+                if (seconds > 1) {
+                    countdown.textContent = `Saving in ${seconds} seconds...`;
+                } else {
+                    countdown.textContent = 'Saving now...';
+                }
+            }
+        }
+        
+        function updateGenderUI(selectedGender) {
+            // Remove all selected states
+            document.querySelectorAll('.gender-card input[name="gender"]').forEach(input => {
+                const card = input.closest('.gender-card');
+                const div = card.querySelector('div');
+                div.classList.remove('border-brand-500', 'bg-brand-50', 'shadow-sm');
+                div.classList.add('border-slate-200');
+                
+                // Reset icon colors
+                const iconContainer = div.querySelector('.w-8');
+                iconContainer.classList.remove('bg-blue-500', 'bg-pink-500', 'bg-gradient-to-br', 'from-red-500', 'to-yellow-500', 'bg-slate-500', 'text-white');
+                iconContainer.classList.add('bg-slate-100');
+                
+                // Reset text colors
+                const textSpan = div.querySelector('span.text-xs');
+                textSpan.classList.remove('text-blue-700', 'text-pink-700', 'text-purple-700', 'text-slate-700');
+                textSpan.classList.add('text-slate-700');
+                
+                // Remove checkmarks
+                const checkmark = div.querySelector('.absolute');
+                if (checkmark) {
+                    checkmark.remove();
+                }
+            });
+            
+            // Add selected state to the chosen gender
+            const selectedInput = document.querySelector(`input[name="gender"][value="${selectedGender}"]`);
+            if (selectedInput) {
+                const card = selectedInput.closest('.gender-card');
+                const div = card.querySelector('div');
+                div.classList.remove('border-slate-200');
+                div.classList.add('border-brand-500', 'bg-brand-50', 'shadow-sm');
+                
+                // Update icon colors based on gender
+                const iconContainer = div.querySelector('.w-8');
+                const textSpan = div.querySelector('span.text-xs');
+                
+                if (selectedGender === 'male') {
+                    iconContainer.classList.remove('bg-slate-100');
+                    iconContainer.classList.add('bg-blue-500', 'text-white');
+                    textSpan.classList.remove('text-slate-700');
+                    textSpan.classList.add('text-blue-700');
+                    addCheckmark(div, 'bg-blue-500');
+                } else if (selectedGender === 'female') {
+                    iconContainer.classList.remove('bg-slate-100');
+                    iconContainer.classList.add('bg-pink-500', 'text-white');
+                    textSpan.classList.remove('text-slate-700');
+                    textSpan.classList.add('text-pink-700');
+                    addCheckmark(div, 'bg-pink-500');
+                } else if (selectedGender === 'lgbtq_plus') {
+                    iconContainer.classList.remove('bg-slate-100');
+                    iconContainer.classList.add('bg-gradient-to-br', 'from-red-500', 'to-yellow-500', 'text-white');
+                    textSpan.classList.remove('text-slate-700');
+                    textSpan.classList.add('text-purple-700');
+                    addCheckmark(div, 'bg-gradient-to-br from-red-500 to-yellow-500');
+                } else if (selectedGender === 'prefer_not_to_say') {
+                    iconContainer.classList.remove('bg-slate-100');
+                    iconContainer.classList.add('bg-slate-500', 'text-white');
+                    textSpan.classList.remove('text-slate-700');
+                    textSpan.classList.add('text-slate-700');
+                    addCheckmark(div, 'bg-slate-500');
+                }
+            }
+        }
+        
+        function addCheckmark(container, bgClass) {
+            // Remove existing checkmark if any
+            const existingCheckmark = container.querySelector('.absolute');
+            if (existingCheckmark) {
+                existingCheckmark.remove();
+            }
+            
+            // Add new checkmark
+            const checkmark = document.createElement('div');
+            checkmark.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center';
+            checkmark.className += ' ' + bgClass;
+            checkmark.innerHTML = `
+                <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+            `;
+            container.appendChild(checkmark);
+        }
+        
+        console.log('=== SETTINGS PAGE SCRIPT STARTED ===');
+        
+        // Gender changes use normal form submission
+        console.log('Script initialized - using normal form submission');
+        
+        // Bio auto-save removed
+        // Email auto-save removed  
+        // Display name auto-save removed
+        
+        // Handle avatar upload (keep as is)
+        const avatarInput = document.querySelector('input[name="avatar"]');
+        if (avatarInput) {
+            avatarInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    // For avatar upload, we still need to submit the form normally
+                    // or create a separate handler if needed
+                    console.log('Avatar selected - use save button to upload');
+                }
+            });
+        }
+        
+        // Password form now uses normal submission - no AJAX handling needed
+        
+        function updateHeaderProfile() {
+            // Update header display name
+            const headerDisplayName = document.getElementById('headerDisplayName');
+            const displayNameInput = document.querySelector('input[name="display_name"]');
+            if (headerDisplayName && displayNameInput) {
+                headerDisplayName.textContent = displayNameInput.value;
+            }
+            
+            // Update header avatar if it was changed
+            const avatarInput = document.querySelector('input[name="avatar"]');
+            if (avatarInput && avatarInput.files.length > 0) {
+                const headerAvatar = document.getElementById('headerAvatar');
+                if (headerAvatar) {
+                    // Create a temporary URL to show the new avatar immediately
+                    const tempUrl = URL.createObjectURL(avatarInput.files[0]);
+                    
+                    // Check if current header avatar is img or div
+                    if (headerAvatar.tagName === 'IMG') {
+                        headerAvatar.src = tempUrl;
+                    } else {
+                        // Replace div with img
+                        const newImg = document.createElement('img');
+                        newImg.id = 'headerAvatar';
+                        newImg.src = tempUrl;
+                        newImg.className = 'w-7 h-7 rounded-full object-cover ring-2 ring-white shadow-sm shrink-0';
+                        newImg.alt = 'avatar';
+                        headerAvatar.parentNode.replaceChild(newImg, headerAvatar);
+                    }
+                    
+                    // Clean up the temporary URL after a while
+                    setTimeout(() => URL.revokeObjectURL(tempUrl), 5000);
+                }
+            }
+        }
+        
+        function showSuccessMessage(message) {
+            showMessage(message, 'success');
+        }
+        
+        function showErrorMessage(message) {
+            showMessage(message, 'error');
+        }
+        
+        function showMessage(message, type) {
+            const messageId = type + '-message';
+            let msgDiv = document.getElementById(messageId);
+            if (!msgDiv) {
+                msgDiv = document.createElement('div');
+                msgDiv.id = messageId;
+                msgDiv.className = `fixed top-4 right-4 px-6 py-3 rounded-xl shadow-xl z-50 transform transition-all duration-300 ${
+                    type === 'success' 
+                        ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white border border-emerald-400' 
+                        : 'bg-gradient-to-r from-red-500 to-rose-600 text-white border border-red-400'
+                }`;
+                document.body.appendChild(msgDiv);
+            }
+            
+            // Add icon and better styling
+            if (type === 'success') {
+                msgDiv.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold">Profile Updated!</p>
+                            <p class="text-sm opacity-90">Your changes have been saved</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                msgDiv.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold">Error</p>
+                            <p class="text-sm opacity-90">${message}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            msgDiv.style.display = 'block';
+            msgDiv.style.transform = 'translateX(0)';
+            
+            // Auto hide with slide out animation
+            setTimeout(() => {
+                msgDiv.style.transform = 'translateX(400px)';
+                setTimeout(() => {
+                    msgDiv.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+    });
+</script>
+
+<!-- Initialize Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        lucide.createIcons();
+    });
+</script>
+{% endblock %}

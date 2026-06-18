@@ -1,0 +1,373 @@
+{% extends 'projects/base.html' %}
+{% block title %}Team Analytics{% endblock %}
+
+{% block content %}
+<div class="analytics-wrap">
+
+  <!-- ── Nav tabs ── -->
+  <div class="an-tabs">
+    <a href="/analytics/" class="an-tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Personal
+    </a>
+    <a href="/analytics/team/" class="an-tab active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Team
+    </a>
+    <a href="/reports/" class="an-tab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Reports &amp; Export
+    </a>
+  </div>
+
+  {% if no_projects %}
+  <div class="empty-state">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:52px;height:52px;color:#d1d5db"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    <h3>No projects found</h3>
+    <p>Create a project first to see team analytics.</p>
+    <a href="/" class="btn-primary">Go to Projects</a>
+  </div>
+  {% else %}
+
+  <!-- ── Team KPI ── -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#ede9fe;color:#7c3aed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </span>
+      <div><div class="kpi-val">{{ total_members }}</div><div class="kpi-lbl">Team Members</div></div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#d1fae5;color:#059669">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </span>
+      <div><div class="kpi-val">{{ team_completion }}%</div><div class="kpi-lbl">Team Completion</div></div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#fef3c7;color:#d97706">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11h1a3 3 0 0 1 0 6h-1"/><path d="M9 12H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h4"/><line x1="13" y1="7" x2="7" y2="7"/><line x1="13" y1="11" x2="7" y2="11"/><line x1="13" y1="15" x2="7" y2="15"/><rect x="9" y="5" width="8" height="14" rx="1"/></svg>
+      </span>
+      <div><div class="kpi-val">{{ collab_score }}%</div><div class="kpi-lbl">Collaboration Score</div></div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#e0f2fe;color:#0284c7">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </span>
+      <div><div class="kpi-val">{{ avg_efficiency }}%</div><div class="kpi-lbl">Avg Efficiency</div></div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#f0fdf4;color:#16a34a">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </span>
+      <div><div class="kpi-val">{{ total_tasks }}</div><div class="kpi-lbl">Total Tasks</div></div>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-icon" style="background:#fce7f3;color:#db2777">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+      </span>
+      <div><div class="kpi-val">{{ owned_projects.count }}</div><div class="kpi-lbl">Active Projects</div></div>
+    </div>
+  </div>
+
+  <!-- ── Charts Row: Efficiency Bar + Workload Pie ── -->
+  <div class="charts-row-2">
+    <div class="chart-card">
+      <div class="chart-title">
+        <span class="section-label"></span> Member Efficiency (%)
+      </div>
+      <canvas id="efficiencyBar" height="150"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">
+        <span class="section-label"></span> Workload Distribution
+      </div>
+      <canvas id="workloadPie" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Member Performance Table ── -->
+  <div class="section-card">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+      Member Performance
+    </div>
+    <div class="member-table-wrap">
+      <table class="member-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Member</th><th>Tasks</th><th>Done</th>
+            <th>Doing</th><th>Overdue</th><th>Efficiency</th><th>Workload</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in member_stats %}
+          <tr>
+            <td class="rank">{{ forloop.counter }}</td>
+            <td>
+              <div class="member-info">
+                {% if m.avatar_url %}
+                <img src="{{ m.avatar_url }}" class="avatar-sm avatar no-drag no-select no-right-click" alt="" draggable="false">
+                {% else %}
+                <div class="avatar-sm avatar-placeholder">{{ m.display_name|first|upper }}</div>
+                {% endif %}
+                <div>
+                  <div class="member-name">{{ m.display_name }}
+                    {% if m.is_owner %}<span class="owner-badge">Owner</span>{% endif %}
+                  </div>
+                  <div class="member-username">@{{ m.user.username }}</div>
+                </div>
+              </div>
+            </td>
+            <td><strong>{{ m.total }}</strong></td>
+            <td><span class="tag tag--done">{{ m.done }}</span></td>
+            <td><span class="tag tag--doing">{{ m.doing }}</span></td>
+            <td>{% if m.overdue %}<span class="tag tag--over">{{ m.overdue }}</span>{% else %}<span class="tag-none">0</span>{% endif %}</td>
+            <td>
+              <div class="eff-wrap">
+                <div class="eff-track"><div class="eff-fill" style="width:{{ m.efficiency }}%;background:{% if m.efficiency >= 70 %}#10b981{% elif m.efficiency >= 40 %}#f59e0b{% else %}#ef4444{% endif %}"></div></div>
+                <span class="eff-pct">{{ m.efficiency }}%</span>
+              </div>
+            </td>
+            <td>
+              <span class="workload-badge workload--{{ m.workload_label }}">
+                {% if m.workload_label == 'overloaded' %}⚡ Overloaded
+                {% elif m.workload_label == 'underloaded' %}💤 Light
+                {% else %}✓ Balanced{% endif %}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Team Recommendations ── -->
+  <div class="section-card">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Team Recommendations
+    </div>
+    <div class="rec-grid">
+      {% for r in recommendations %}
+      <div class="rec-item rec--{{ r.color }}">
+        <i data-lucide="{{ r.icon }}"></i>
+        <div>
+          <strong>{{ r.title }}</strong>
+          <p>{{ r.detail }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% if not no_projects %}
+<script>
+const effLabels = [{% for m in member_stats %}"{{ m.display_name|truncatechars:14 }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+const effData   = [{% for m in member_stats %}{{ m.efficiency }}{% if not forloop.last %},{% endif %}{% endfor %}];
+const workload  = {{ workload_data|safe }};
+
+new Chart(document.getElementById('efficiencyBar'),{
+  type:'bar',
+  data:{
+    labels: effLabels,
+    datasets:[{ label:'Efficiency %', data: effData,
+      backgroundColor: effData.map(v => v>=70?'rgba(16,185,129,.75)':v>=40?'rgba(245,158,11,.75)':'rgba(239,68,68,.75)'),
+      borderRadius:6, borderSkipped:false }]
+  },
+  options:{
+    responsive:true,
+    plugins:{ legend:{display:false} },
+    scales:{
+      x:{ grid:{display:false}, ticks:{color:'#6b7280',font:{size:11}} },
+      y:{ beginAtZero:true, max:100, ticks:{callback:v=>v+'%',color:'#6b7280',font:{size:11}}, grid:{color:'#f3f4f6'} }
+    }
+  }
+});
+
+if(workload.length>0){
+  const palette=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6'];
+  new Chart(document.getElementById('workloadPie'),{
+    type:'doughnut',
+    data:{
+      labels: workload.map(w=>w.name),
+      datasets:[{ data: workload.map(w=>w.count),
+        backgroundColor: palette.slice(0, workload.length),
+        borderWidth:2, borderColor:'#fff' }]
+    },
+    options:{ cutout:'55%', plugins:{ legend:{ position:'bottom', labels:{font:{size:11},color:'#374151'} } } }
+  });
+}
+
+// ── Avatar Right-Click Prevention ───────────────────────────────
+document.addEventListener("DOMContentLoaded", function () {
+    const avatars = document.querySelectorAll(".avatar");
+
+    avatars.forEach(img => {
+        img.addEventListener("contextmenu", function (e) {
+            e.preventDefault();
+        });
+    });
+});
+</script>
+{% endif %}
+
+<style>
+/* ── Base ── */
+.analytics-wrap{ max-width:1200px; margin:0 auto; padding:12px 10px; } @media(min-width:640px){ .analytics-wrap{ padding:24px 16px; } }
+
+/* ── Nav Tabs (no select/drag) ── */
+.an-tabs{
+  display:flex; gap:8px; margin-bottom:28px;
+  border-bottom:2px solid var(--border,#e5e7eb);
+  user-select:none; -webkit-user-select:none;
+  -moz-user-select:none; -ms-user-select:none;
+  -webkit-user-drag:none;
+}
+.an-tab{
+  display:flex; align-items:center; gap:6px; padding:8px 18px;
+  border-radius:8px 8px 0 0; font-size:.9rem; font-weight:500;
+  color:var(--text-muted,#6b7280); text-decoration:none;
+  border:1px solid transparent; border-bottom:none; transition:all .2s;
+  user-select:none; -webkit-user-select:none;
+  -webkit-user-drag:none; cursor:pointer;
+}
+.an-tab svg{ width:15px; height:15px; flex-shrink:0; }
+.an-tab:hover{ background:var(--bg-hover,#f3f4f6); }
+.an-tab.active{
+  background:var(--bg-card,#fff); border-color:var(--border,#e5e7eb);
+  color:var(--accent,#6366f1); margin-bottom:-2px;
+}
+
+/* ── KPI ── */
+.kpi-grid{ display:flex; flex-wrap: nowrap; gap:10px; margin-bottom:16px; overflow-x: auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+.kpi-card{ background:var(--bg-card,#fff); border:1px solid var(--border,#e5e7eb);
+  border-radius:12px; padding:16px; display:flex; align-items:center; gap:14px;
+  box-shadow:0 1px 4px rgba(0,0,0,.04); transition:box-shadow .2s;
+  flex: 1 1 auto; min-width: 170px; overflow: hidden; }
+.kpi-card:hover{ box-shadow:0 4px 14px rgba(0,0,0,.08); }
+.kpi-icon{ width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.kpi-icon svg{ width:22px; height:22px; }
+.kpi-val{ font-size:0.75rem; font-weight:700; line-height:1; color:var(--text,#111827); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi-lbl{ font-size:.78rem; color:var(--text-muted,#6b7280); margin-top:2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Charts ── */
+.charts-row-2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.chart-card{ background:var(--bg-card,#fff); border:1px solid var(--border,#e5e7eb);
+  border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.04);
+  width: 100%; max-width: 100%; box-sizing: border-box; }
+.chart-title{ font-weight:600; font-size:.95rem; color:var(--text,#111827); margin-bottom:14px;
+  display:flex; align-items:center; }
+.section-label{ display:inline-block; width:3px; height:16px;
+  background:linear-gradient(180deg,#4f46e5,#818cf8); border-radius:2px;
+  margin-right:8px; vertical-align:middle; flex-shrink:0; }
+
+/* ── Chart Canvas Responsiveness ── */
+.chart-card canvas {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  box-sizing: border-box;
+}
+
+/* ── Section Card ── */
+.section-card{ background:var(--bg-card,#fff); border:1px solid var(--border,#e5e7eb);
+  border-radius:12px; padding:20px; margin-bottom:20px; }
+.section-title{ font-weight:600; font-size:1rem; display:flex; align-items:center; gap:8px;
+  color:var(--text,#111827); margin-bottom:16px; }
+.section-title svg{ width:18px; height:18px; color:var(--accent,#6366f1); flex-shrink:0; }
+
+/* ── Member Table ── */
+.member-table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.member-table{ width:100%; border-collapse:collapse; font-size:.875rem; }
+.member-table th{ text-align:left; padding:10px 12px; font-size:.78rem; font-weight:700;
+  color:#9ca3af; border-bottom:2px solid #f3f4f6; white-space:nowrap;
+  text-transform:uppercase; letter-spacing:.03em; }
+.member-table td{ padding:12px; border-bottom:1px solid #f9fafb; vertical-align:middle; }
+.member-table tr:last-child td{ border-bottom:none; }
+.member-table tr:hover td{ background:#f9fafb; }
+.rank{ font-weight:700; color:#d1d5db; width:32px; }
+.member-info{ display:flex; align-items:center; gap:10px; }
+.avatar-sm{ width:34px; height:34px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+.avatar-placeholder{ background:var(--accent,#6366f1); color:#fff; display:flex;
+  align-items:center; justify-content:center; font-weight:700; font-size:.9rem; }
+.member-name{ font-weight:600; color:var(--text,#111827); display:flex; align-items:center; gap:6px; font-size:.875rem; }
+.member-username{ font-size:.75rem; color:#9ca3af; }
+.owner-badge{ font-size:.68rem; padding:1px 6px; background:#ede9fe; color:#7c3aed;
+  border-radius:10px; font-weight:600; }
+.tag{ font-size:.78rem; padding:3px 10px; border-radius:20px; font-weight:600; }
+.tag--done{ background:#d1fae5; color:#065f46; }
+.tag--doing{ background:#fef3c7; color:#92400e; }
+.tag--over{ background:#fee2e2; color:#991b1b; }
+.tag-none{ color:#d1d5db; font-weight:600; }
+.eff-wrap{ display:flex; align-items:center; gap:8px; }
+.eff-track{ width:72px; height:6px; background:#f3f4f6; border-radius:4px; overflow:hidden; flex-shrink:0; }
+.eff-fill{ height:100%; border-radius:4px; transition:width .4s; }
+.eff-pct{ font-size:.82rem; font-weight:600; color:#374151; }
+.workload-badge{ font-size:.76rem; padding:3px 10px; border-radius:20px; font-weight:600; white-space:nowrap; }
+.workload--overloaded{ background:#fee2e2; color:#991b1b; }
+.workload--underloaded{ background:#f0fdf4; color:#166534; }
+.workload--balanced{ background:#eff6ff; color:#1d4ed8; }
+
+/* ── Recommendations ── */
+.rec-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+.rec-item{ display:flex; gap:14px; align-items:flex-start; padding:14px;
+  border-radius:10px; border:1px solid var(--border,#e5e7eb); }
+.rec-item svg{ width:22px; height:22px; flex-shrink:0; margin-top:2px; }
+.rec-item strong{ font-size:.9rem; font-weight:600; display:block; margin-bottom:3px; }
+.rec-item p{ font-size:.82rem; color:#6b7280; margin:0; }
+.rec--green{ background:#f0fdf4; border-color:#bbf7d0; } .rec--green svg{ color:#059669; }
+.rec--orange{ background:#fffbeb; border-color:#fde68a; } .rec--orange svg{ color:#d97706; }
+.rec--red{ background:#fef2f2; border-color:#fecaca; } .rec--red svg{ color:#dc2626; }
+.rec--blue{ background:#eff6ff; border-color:#bfdbfe; } .rec--blue svg{ color:#2563eb; }
+
+/* ── Empty State ── */
+.empty-state{ text-align:center; padding:60px 20px; }
+.empty-state h3{ font-size:1.2rem; color:#374151; margin:12px 0 8px; font-weight:600; }
+.empty-state p{ color:#6b7280; margin-bottom:20px; font-size:.9rem; }
+.btn-primary{ background:var(--accent,#6366f1); color:#fff; padding:8px 20px;
+  border-radius:8px; text-decoration:none; font-weight:600; font-size:.9rem; display:inline-block; }
+.btn-primary:hover{ background:#4f46e5; }
+
+/* Avatar Protection */
+.no-drag {
+    -webkit-user-drag: none;
+    user-drag: none;
+}
+
+.no-select {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.no-right-click {
+    pointer-events: auto;
+}
+
+@media(max-width:900px){ 
+  .charts-row-2{ grid-template-columns:1fr; }
+  .chart-card canvas {
+    min-height: 200px;
+  }
+}
+@media(max-width:600px){ 
+  .kpi-grid{ gap:12px; }
+  .kpi-card{ min-width: 150px; padding: 12px; }
+  .kpi-val{ font-size:0.65rem; }
+  .kpi-lbl{ font-size:.75rem; }
+  .kpi-icon{ width: 38px; height: 38px; }
+  .kpi-icon svg{ width: 18px; height: 18px; }
+  .chart-card canvas {
+    min-height: 180px;
+  }
+  .chart-card {
+    padding: 16px;
+  }
+}
+</style>
+{% endblock %}

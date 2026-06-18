@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}KanFlow{% endblock %}</title>
+
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "surface":               "#f7f9fb",
+                        "surface-container-low": "#f2f4f6",
+                        "on-surface":            "#191c1e",
+                        "secondary":             "#515f74",
+                        "primary":               "#1a146b",
+                        "primary-fixed":         "#e2dfff",
+                        "outline-variant":       "#c8c5d3",
+                    },
+                    fontFamily: {
+                        "headline": ["Plus Jakarta Sans", "sans-serif"],
+                        "body":     ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        "xl": "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "full": "9999px",
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .font-headline { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle; font-size: 20px;
+        }
+        .fill-icon { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        body { background-color: #f7f9fb; color: #191c1e; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-xl border-b border-outline-variant/20 sticky top-0 z-10">
+        <div class="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
+            <a href="/login/" class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-sm">
+                <span class="material-symbols-outlined text-white fill-icon" style="font-size:16px">grid_view</span>
+            </a>
+            <span class="font-headline font-bold text-primary">KanFlow</span>
+            <span class="text-outline-variant mx-1">·</span>
+            <span class="text-sm text-secondary">{% block page_label %}{% endblock %}</span>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-6 py-10 space-y-6">
+        {% block content %}{% endblock %}
+
+        <div class="text-center pt-6">
+            <a href="/login/" class="text-sm text-primary hover:text-primary-container font-semibold transition-colors">
+                ← Back to login
+            </a>
+        </div>
+    </main>
+</body>
+</html>

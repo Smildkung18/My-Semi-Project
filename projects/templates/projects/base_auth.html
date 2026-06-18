@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}KanFlow{% endblock %}</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: {
+                colors: {
+                    "primary": "#1a146b", "primary-container": "#312e81",
+                    "primary-fixed": "#e2dfff", "primary-fixed-dim": "#c3c0ff",
+                    "on-primary-fixed-variant": "#3e3c8f",
+                    "surface-container-low": "#f2f4f6", "surface-container": "#eceef0",
+                    "on-surface": "#191c1e", "secondary": "#515f74",
+                    "outline": "#777682", "outline-variant": "#c8c5d3",
+                    "error": "#ba1a1a", "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-container": "#14ba82", "tertiary-fixed-dim": "#4edea3",
+                },
+                fontFamily: { "headline": ["Plus Jakarta Sans","sans-serif"], "body": ["Inter","sans-serif"] },
+                borderRadius: { "xl":"0.75rem","2xl":"1rem","3xl":"1.5rem","4xl":"2rem","full":"9999px" },
+            }}
+        }
+    </script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .font-headline { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; vertical-align:middle; font-size:20px; }
+        .fill-icon { font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+
+        body { background-color: #eef0f3; min-height: 100vh; display: flex; flex-direction: column; }
+
+        .auth-input {
+            width: 100%; background: #f2f4f6;
+            border: 1.5px solid transparent; border-radius: 0.75rem;
+            padding: 14px 16px 14px 44px !important; font-size: 14px;
+            color: #191c1e; font-weight: 500; transition: all 0.2s ease;
+        }
+        .auth-input::placeholder { color: #777682; font-weight: 400; }
+        .auth-input:focus { outline: none; border-color: #1a146b; background: #ffffff; box-shadow: 0 0 0 4px rgba(26,20,107,0.08); }
+        .auth-input.has-right { padding-right: 44px !important; }
+
+        .auth-card {
+            background: #ffffff; border-radius: 1rem;
+            border: 1.5px solid rgba(26,20,107,0.10);
+            box-shadow: 0 8px 40px rgba(26,20,107,0.13), 0 2px 8px rgba(26,20,107,0.08), 0 0 0 1px rgba(255,255,255,0.8);
+            animation: cardEnter 0.45s cubic-bezier(0.16,1,0.3,1) both;
+        }
+        @keyframes cardEnter { from{opacity:0;transform:translateY(20px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+        .btn-auth {
+            width: 100%; background: #1a146b; color: white;
+            font-weight: 700; font-size: 15px; padding: 15px;
+            border-radius: 0.75rem; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all 0.2s ease; box-shadow: 0 4px 16px rgba(26,20,107,0.25);
+        }
+        .btn-auth:hover { background: #312e81; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(26,20,107,0.3); }
+        .btn-auth:active { transform: translateY(0); }
+
+        .input-wrap { position: relative; }
+        .input-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#777682; pointer-events:none; font-size:18px; }
+        .input-icon-right { position:absolute; right:14px; top:50%; transform:translateY(-50%); color:#777682; cursor:pointer; background:none; border:none; padding:0; font-size:18px; }
+        .input-icon-right:hover { color: #1a146b; }
+
+        .auth-label { display:block; font-size:11px; font-weight:700; color:#474651; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px; }
+
+        /* Subtle dot pattern */
+        body::before {
+            content: '';
+            position: fixed; inset: 0; pointer-events: none;
+            background-image: radial-gradient(circle, #c8c5d3 1px, transparent 1px);
+            background-size: 32px 32px;
+            opacity: 0.35; z-index: 0;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="flex-1 flex flex-col items-center justify-center px-3 sm:px-4 py-6 sm:py-12 relative z-10">
+
+        <!-- Logo block -->
+        <div class="text-center mb-4 sm:mb-8">
+            {% block logo %}
+            <div class="w-14 h-14 rounded-2xl mx-auto mb-5 flex items-center justify-center shadow-lg"
+                style="background: linear-gradient(135deg, #1a146b 0%, #312e81 100%);">
+                <span class="material-symbols-outlined text-white fill-icon" style="font-size:26px">architecture</span>
+            </div>
+            <h1 class="font-headline font-extrabold text-2xl sm:text-3xl text-primary tracking-tight">KanFlow</h1>
+            <p class="text-secondary text-sm mt-1.5 font-medium">{% block tagline %}Precision Architectural Management{% endblock %}</p>
+            {% endblock %}
+        </div>
+
+        <!-- Card -->
+        <div class="auth-card w-full max-w-md p-5 sm:p-8">
+            {% block card_content %}{% endblock %}
+        </div>
+
+        {% block below_card %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="relative z-20 py-5 px-8 border-t border-outline-variant/30 bg-surface-container-low/80">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p class="text-xs text-secondary">© 2024 KanFlow. Architectural Project Management.</p>
+            <div class="flex items-center gap-5 text-xs text-secondary">
+                <a href="/privacy/" class="hover:text-primary transition-colors">Privacy Policy</a>
+                <a href="/terms/" class="hover:text-primary transition-colors">Terms of Service</a>
+                <a href="#" class="hover:text-primary transition-colors">Security</a>
+                <a href="/help/" class="hover:text-primary transition-colors">Help Center</a>
+            </div>
+        </div>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
