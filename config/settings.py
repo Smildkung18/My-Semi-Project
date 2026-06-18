@@ -135,3 +135,22 @@ EMAIL_USE_TLS       = True
 EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL', f'KanFlow <{EMAIL_HOST_USER}>')
+
+# ── Production / Railway ──────────────────────────────────────────────────
+import sys
+
+# Whitenoise — serve static files โดยไม่ต้องมี nginx
+if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Railway inject RAILWAY_ENVIRONMENT เมื่อ deploy จริง
+ON_RAILWAY = os.environ.get('RAILWAY_ENVIRONMENT') is not None
+
+if ON_RAILWAY:
+    DEBUG = False
+    # Railway inject RAILWAY_PUBLIC_DOMAIN ให้อัตโนมัติ
+    RAILWAY_HOST = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')
+    if RAILWAY_HOST and RAILWAY_HOST not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(RAILWAY_HOST)
